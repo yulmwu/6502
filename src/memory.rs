@@ -1,3 +1,8 @@
+/// Memory Allocation
+///
+/// * `0x0000` ~ `0x3FFF`: RAM
+/// * `0x4000` ~ `0x7FFF`: I/O
+/// * `0x8000` ~ `0xFFFF`: ROM
 #[derive(Debug)]
 pub struct Memory {
     pub mem: [u8; 0xFFFF],
@@ -24,6 +29,11 @@ impl std::ops::IndexMut<u16> for Memory {
 }
 
 impl Memory {
+    /// `rom` function loads the program from address `0x8000`.
+    pub fn rom(&mut self, program: &[u8]) {
+        self.mem[0x8000..0x8000 + program.len()].copy_from_slice(program);
+    }
+
     pub fn write(&mut self, address: u16, data: u8) {
         self[address] = data;
     }
