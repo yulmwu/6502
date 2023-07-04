@@ -15,6 +15,10 @@ impl Cpu {
         }
     }
 
+    pub fn reset(&mut self) {
+        self.registers.pc = 0xFFFC;
+    }
+
     pub fn execute(&mut self) {
         loop {
             let opcode = self.memory.read(self.registers.pc);
