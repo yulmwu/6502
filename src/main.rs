@@ -1,14 +1,13 @@
-use crate::{memory::Memory, cpu::Cpu};
-
-mod cpu;
-mod memory;
-mod registers;
+use emulator::{cpu::Cpu, memory::Memory};
 
 fn main() {
-    let memory = Memory::default();
+    let mut memory = Memory::default();
+    memory.rom(&[0x00, 0x00, 0x00, 0x00]);
+
     let mut cpu = Cpu::new(memory);
 
+    cpu.reset();
     cpu.execute();
 
-    println!("Hello, world!");
+    println!("{:?}", cpu.memory[0]);
 }
