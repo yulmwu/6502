@@ -1,4 +1,7 @@
-use crate::{memory::{Memory, STACK_BASE}, registers::Registers};
+use crate::{
+    memory::{Memory, STACK_BASE},
+    registers::Registers,
+};
 
 #[doc=include_str!("../README.md")]
 #[derive(Debug, Default)]
@@ -32,14 +35,15 @@ impl Cpu {
             self.registers.pc += 1;
 
             match opcode {
-                0x00 => {},
+                0x00 => {}
                 _ => {}
             }
         }
     }
 
     fn stack_push(&mut self, data: u8) {
-        self.memory.write(STACK_BASE + self.registers.sp as u16, data);
+        self.memory
+            .write(STACK_BASE + self.registers.sp as u16, data);
         self.registers.sp = self.registers.sp.wrapping_sub(1);
     }
 
