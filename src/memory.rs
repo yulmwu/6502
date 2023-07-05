@@ -1,3 +1,5 @@
+pub const STACK_BASE: u16 = 0x0100;
+
 /// # Memory Map
 ///
 /// * `0x0000` ~ `0x3FFF`: RAM
