@@ -16,7 +16,10 @@ impl Cpu {
     }
 
     pub fn reset(&mut self) {
-        self.registers.pc = 0xFFFC;
+        self.registers = Registers {
+            pc: 0x8000,
+            ..Registers::default()
+        }
     }
 
     pub fn execute(&mut self) {
