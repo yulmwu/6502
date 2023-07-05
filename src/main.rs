@@ -1,11 +1,9 @@
 use emulator::{cpu::Cpu, memory::Memory};
 
 fn main() {
-    let mut memory = Memory::default();
-    memory.rom(&[0x00, 0x00, 0x00, 0x00]);
-
+    let memory = Memory::default();
     let mut cpu = Cpu::new(memory);
-
+    cpu.load(&[0x00]);
     cpu.reset();
     cpu.execute();
 
