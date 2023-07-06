@@ -2,8 +2,8 @@
 ///
 /// Addressing mode is a way to access memory. There are several addressing modes in MOS 6502.
 ///
-/// 
-/// 
+///
+///
 /// | Addressing Mode | Description | Example |
 /// | --- | --- | --- |
 /// | Implicit(Implied) | The instruction has no operands. | `CLC`, `INX` ... |
