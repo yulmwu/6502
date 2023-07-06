@@ -1,5 +1,19 @@
 pub const STACK_BASE: u16 = 0x0100;
 
+/// # Memory Bus
+///
+/// The memory bus is a way to access memory.
+/// In this MOS 6502 emulator, the memory bus is a 16-bit address space, and the data is 8-bit.
+pub trait MemoryBus {
+    type Data;
+    type Addr;
+    fn rom(&mut self, data: &[Self::Data]);
+    fn write(&mut self, addr: Self::Addr, data: Self::Data);
+    fn read(&self, addr: Self::Addr) -> Self::Data;
+    fn write_addr(&mut self, addr: Self::Addr, data: Self::Addr);
+    fn read_addr(&self, addr: Self::Addr) -> Self::Addr;
+}
+
 /// # Memory Map
 ///
 /// * `0x0000` ~ `0x3FFF`: RAM
@@ -35,24 +49,27 @@ impl std::ops::IndexMut<u16> for Memory {
     }
 }
 
-impl Memory {
+impl MemoryBus for Memory {
+    type Data = u8;
+    type Addr = u16;
+
     /// `rom` function loads the program from address `0x8000`.
-    pub fn rom(&mut self, program: &[u8]) {
+    fn rom(&mut self, program: &[Self::Data]) {
         self.mem[0x8000..0x8000 + program.len()].copy_from_slice(program);
     }
 
     /// Write data to memory address
-    pub fn write(&mut self, address: u16, data: u8) {
+    fn write(&mut self, address: Self::Addr, data: Self::Data) {
         self[address] = data;
     }
 
     /// Read data from memory address
-    pub fn read(&self, address: u16) -> u8 {
+    fn read(&self, address: Self::Addr) -> Self::Data {
         self[address]
     }
 
     /// Write 16-bit data to memory address (little endian)
-    pub fn write_16(&mut self, address: u16, data: u16) {
+    fn write_addr(&mut self, address: Self::Addr, data: Self::Addr) {
         let [lsb, msb] = data.to_le_bytes();
 
         self.write(address, lsb);
@@ -60,7 +77,7 @@ impl Memory {
     }
 
     /// Read 16-bit data from memory address (little endian)
-    pub fn read_16(&self, address: u16) -> u16 {
+    fn read_addr(&self, address: Self::Addr) -> Self::Addr {
         let lsb = self.read(address);
         let msb = self.read(address + 1);
 
@@ -87,10 +104,10 @@ mod tests {
     fn test_read_write_16() {
         let mut memory = Memory::default();
 
-        memory.write_16(0x0000, 0x1234);
+        memory.write_addr(0x0000, 0x1234);
 
         assert_eq!(memory.read(0x0000), 0x34);
         assert_eq!(memory.read(0x0001), 0x12);
-        assert_eq!(memory.read_16(0x0000), 0x1234);
+        assert_eq!(memory.read_addr(0x0000), 0x1234);
     }
 }
