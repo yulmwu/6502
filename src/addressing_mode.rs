@@ -2,6 +2,8 @@
 ///
 /// Addressing mode is a way to access memory. There are several addressing modes in MOS 6502.
 ///
+/// 
+/// 
 /// | Addressing Mode | Description | Example |
 /// | --- | --- | --- |
 /// | Implicit(Implied) | The instruction has no operands. | `CLC`, `INX` ... |
@@ -21,14 +23,15 @@
 /// | Indirect, X or Y | Adding the `X` or `Y` register to the address. | `JMP ($1234, X)`, `JMP ($5678, Y)` ... |
 /// | Zero Page, X or Y | Adding the `X` or `Y` register to the address. | `LDA $12, X`, `LDX $34, Y` ... |
 ///
+/// In this MOS 6502 emulator, `Implicit`, `Accumulator` and `Indirect` are not implemented.
 pub enum AddressingMode {
-    Implicit,
-    Accumulator,
+    // Implicit,
+    // Accumulator,
     Immediate,
     Absolute,
     AbsoluteX,
     AbsoluteY,
-    Indirect,
+    // Indirect,
     IndirectX,
     IndirectY,
     ZeroPage,
