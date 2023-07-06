@@ -7,10 +7,11 @@ it has five 8-bit registers (A, X, Y, P, S) and a 16-bit program counter (PC), a
 
 ## Features
 
+- [x] Addressing modes
+
 ## TODO
 
 - [ ] Implement instructions
-- [ ] Implement addressing modes
 - [ ] Implement interrupts
 - [ ] Assembler
 - [ ] Debugger
