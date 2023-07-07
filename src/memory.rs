@@ -101,7 +101,7 @@ mod tests {
     }
 
     #[test]
-    fn test_read_write_16() {
+    fn test_read_write_addr() {
         let mut memory = Memory::default();
 
         memory.write_addr(0x0000, 0x1234);
