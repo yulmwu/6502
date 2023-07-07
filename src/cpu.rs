@@ -44,8 +44,19 @@ where
             self.registers.pc += 1;
 
             match opcode {
-                0x00 => {}
-                _ => {}
+                // ADC
+                0x69 => self.adc(AddressingMode::Immediate),
+                0x65 => self.adc(AddressingMode::ZeroPage),
+                0x75 => self.adc(AddressingMode::ZeroPageX),
+                0x6D => self.adc(AddressingMode::Absolute),
+                0x7D => self.adc(AddressingMode::AbsoluteX),
+                0x79 => self.adc(AddressingMode::AbsoluteY),
+                0x61 => self.adc(AddressingMode::IndirectX),
+                0x71 => self.adc(AddressingMode::IndirectY),
+
+                // BRK
+                0x00 => break,
+                _ => todo!("opcode {:02X} not implemented", opcode),
             }
         }
     }
@@ -141,6 +152,37 @@ where
             }
         }
     }
+
+    fn add_to_accumulator_with_carry(&mut self, data: T::Data) {
+        let sum = if self.registers.get_flag_carry() {
+            self.registers.a as u16 + data as u16 + 1
+        } else {
+            self.registers.a as u16 + data as u16
+        };
+
+        // Carry flag
+        self.registers.set_flag_carry(sum > 0xFF);
+
+        let sum = sum as u8;
+
+        // self.registers.set_flag_overflow(
+        //     (self.registers.a ^ sum) & (data ^ sum) & 0x80 != 0,
+        // );
+        // TODO: Zero flag, Negative flag, Overflow flag
+
+        self.registers.a = sum;
+    }
+
+    /// ADC (Add with Carry)
+    ///
+    /// Add Memory to Accumulator with Carry
+    ///
+    ///
+    fn adc(&mut self, mode: AddressingMode) {
+        let address = self.get_address_from_mode(mode);
+        let data = self.memory.read(address);
+        self.add_to_accumulator_with_carry(data);
+    }
 }
 
 #[cfg(test)]
@@ -148,136 +190,171 @@ mod tests {
     use super::*;
     use crate::memory::Memory;
 
-    #[test]
-    fn test_stack() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.stack_push(0x01);
-        /*
-        Stack Push: [0x01]
-        SP: 0xFF (0x00 - 0x01 = 0xFF)
-
-        Stack Pop: [0x01]
-        SP: 0x00
-        */
-        assert_eq!(cpu.registers.sp, 0xFF);
-        assert_eq!(cpu.stack_pop(), 0x01);
-        assert_eq!(cpu.registers.sp, 0x00);
-
-        cpu.stack_push_addr(0x0203);
-        /*
-        Stack Push: [0x02, 0x03]
-        SP: 0xFE (0x00 - 0x02 = 0xFE)
-
-        Stack Pop: [0x02, 0x03]
-        SP: 0x00
-        */
-        assert_eq!(cpu.registers.sp, 0xFE);
-        assert_eq!(cpu.stack_pop_addr(), 0x0203);
-        assert_eq!(cpu.registers.sp, 0x00);
+    fn setup() -> Cpu<Memory> {
+        Cpu::default()
     }
 
-    #[test]
-    fn addressing_mode_immidiate() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01);
+    #[cfg(test)]
+    mod stack {
+        use super::*;
 
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::Immediate), 0x8000);
-        assert_eq!(cpu.registers.pc, 0x8001);
+        #[test]
+        fn test_stack() {
+            let mut cpu = setup();
+            cpu.stack_push(0x01);
+            /*
+            Stack Push: [0x01]
+            SP: 0xFF (0x00 - 0x01 = 0xFF)
+
+            Stack Pop: [0x01]
+            SP: 0x00
+            */
+            assert_eq!(cpu.registers.sp, 0xFF);
+            assert_eq!(cpu.stack_pop(), 0x01);
+            assert_eq!(cpu.registers.sp, 0x00);
+
+            cpu.stack_push_addr(0x0203);
+            /*
+            Stack Push: [0x02, 0x03]
+            SP: 0xFE (0x00 - 0x02 = 0xFE)
+
+            Stack Pop: [0x02, 0x03]
+            SP: 0x00
+            */
+            assert_eq!(cpu.registers.sp, 0xFE);
+            assert_eq!(cpu.stack_pop_addr(), 0x0203);
+            assert_eq!(cpu.registers.sp, 0x00);
+        }
     }
 
-    #[test]
-    fn addressing_mode_absolute() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01);
-        cpu.memory.write(0x8001, 0x02);
+    #[cfg(test)]
+    mod memory_addressing_mode {
+        use super::*;
 
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::Absolute), 0x0201);
-        assert_eq!(cpu.registers.pc, 0x8002);
+        #[test]
+        fn addressing_mode_immidiate() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::Immediate), 0x8000);
+            assert_eq!(cpu.registers.pc, 0x8001);
+        }
+
+        #[test]
+        fn addressing_mode_absolute() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+            cpu.memory.write(0x8001, 0x02);
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::Absolute), 0x0201);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn addressing_mode_absolute_x() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+            cpu.memory.write(0x8001, 0x02);
+            cpu.registers.x = 0x03;
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::AbsoluteX), 0x0204);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn addressing_mode_absolute_y() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+            cpu.memory.write(0x8001, 0x02);
+            cpu.registers.y = 0x03;
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::AbsoluteY), 0x0204);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn addressing_mode_indirect_x() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01); // `0x01` + RegX (0x03) = 0x04
+            cpu.memory.write(0x8001, 0x02);
+            cpu.memory.write(0x0004, 0x03);
+            cpu.memory.write(0x0005, 0x04);
+            cpu.registers.x = 0x03;
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectX), 0x0403);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn addressing_mode_indirect_y() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01); // `0x01` + RegY (0x03) = 0x04
+            cpu.memory.write(0x8001, 0x02);
+            cpu.memory.write(0x0004, 0x03);
+            cpu.memory.write(0x0005, 0x04);
+            cpu.registers.y = 0x03;
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectY), 0x0403);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn addressing_mode_zero_page() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPage), 0x01);
+            assert_eq!(cpu.registers.pc, 0x8001);
+        }
+
+        #[test]
+        fn addressing_mode_zero_page_x() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+            cpu.registers.x = 0x03;
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPageX), 0x04);
+            assert_eq!(cpu.registers.pc, 0x8001);
+        }
+
+        #[test]
+        fn addressing_mode_zero_page_y() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+            cpu.registers.y = 0x03;
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPageY), 0x04);
+            assert_eq!(cpu.registers.pc, 0x8001);
+        }
     }
 
-    #[test]
-    fn addressing_mode_absolute_x() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01);
-        cpu.memory.write(0x8001, 0x02);
-        cpu.registers.x = 0x03;
+    #[cfg(test)]
+    mod instruction_adc {
+        use super::*;
+        #[test]
+        fn _0x69() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0xFE;
+            cpu.registers.set_flag_carry(true);
+            cpu.memory.write(0x8000, 0x69); // ADC, Immediate
+            cpu.memory.write(0x8001, 0x02);
+            cpu.memory.write(0x8002, 0x00);
 
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::AbsoluteX), 0x0204);
-        assert_eq!(cpu.registers.pc, 0x8002);
-    }
+            cpu.execute();
 
-    #[test]
-    fn addressing_mode_absolute_y() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01);
-        cpu.memory.write(0x8001, 0x02);
-        cpu.registers.y = 0x03;
-
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::AbsoluteY), 0x0204);
-        assert_eq!(cpu.registers.pc, 0x8002);
-    }
-
-    #[test]
-    fn addressing_mode_indirect_x() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01); // `0x01` + RegX (0x03) = 0x04
-        cpu.memory.write(0x8001, 0x02);
-        cpu.memory.write(0x0004, 0x03);
-        cpu.memory.write(0x0005, 0x04);
-        cpu.registers.x = 0x03;
-
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectX), 0x0403);
-        assert_eq!(cpu.registers.pc, 0x8003);
-    }
-
-    #[test]
-    fn addressing_mode_indirect_y() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01); // `0x01` + RegY (0x03) = 0x04
-        cpu.memory.write(0x8001, 0x02);
-        cpu.memory.write(0x0004, 0x03);
-        cpu.memory.write(0x0005, 0x04);
-        cpu.registers.y = 0x03;
-
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectY), 0x0403);
-        assert_eq!(cpu.registers.pc, 0x8003);
-    }
-
-    #[test]
-    fn addressing_mode_zero_page() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01);
-
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPage), 0x01);
-        assert_eq!(cpu.registers.pc, 0x8001);
-    }
-
-    #[test]
-    fn addressing_mode_zero_page_x() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01);
-        cpu.registers.x = 0x03;
-
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPageX), 0x04);
-        assert_eq!(cpu.registers.pc, 0x8001);
-    }
-
-    #[test]
-    fn addressing_mode_zero_page_y() {
-        let mut cpu = Cpu::<Memory>::default();
-        cpu.reset();
-        cpu.memory.write(0x8000, 0x01);
-        cpu.registers.y = 0x03;
-
-        assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPageY), 0x04);
-        assert_eq!(cpu.registers.pc, 0x8001);
+            assert_eq!(cpu.registers.a, 0x01);
+            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq!(cpu.registers.get_flag_carry(), true);
+        }
     }
 }
