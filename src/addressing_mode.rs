@@ -20,7 +20,8 @@
 /// | Addressing Mode | Description | Example |
 /// | --- | --- | --- |
 /// | Absolute, X or Y | Adding the `X` or `Y` register to the address. | `LDA $1234, X`, `LDX $5678, Y` ... |
-/// | Indirect, X or Y | Adding the `X` or `Y` register to the address. | `JMP ($1234, X)`, `JMP ($5678, Y)` ... |
+/// | Indirect, X | Adding the `X` register to the address. | `JMP ($12, X) ; Address = $12 + X` ... |
+/// | Indirect, Y | Adding the `Y` register to the address. | `JMP ($12), Y ; Address = M[$12] + Y` ... |
 /// | Zero Page, X or Y | Adding the `X` or `Y` register to the address. | `LDA $12, X`, `LDX $34, Y` ... |
 ///
 /// In this MOS 6502 emulator, `Implicit`, `Accumulator` and `Indirect` are not implemented.
