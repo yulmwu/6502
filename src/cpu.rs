@@ -123,14 +123,13 @@ where
                 data
             }
             AddressingMode::IndirectY => {
-                let base = self.memory.read(self.registers.pc);
+                let ptr = self.memory.read(self.registers.pc);
                 self.registers.pc += 1;
 
-                let ptr = base.wrapping_add(self.registers.y);
                 let data = self.memory.read_addr(ptr as T::Addr);
                 self.registers.pc += 2;
 
-                data
+                data + self.registers.y as T::Addr
             }
             AddressingMode::ZeroPage => {
                 let data = self.memory.read(self.registers.pc);
@@ -165,19 +164,26 @@ where
 
         let sum = sum as u8;
 
-        // self.registers.set_flag_overflow(
-        //     (self.registers.a ^ sum) & (data ^ sum) & 0x80 != 0,
-        // );
-        // TODO: Zero flag, Negative flag, Overflow flag
+        // Overflow flag
+        self.registers
+            .set_flag_overflow((self.registers.a ^ sum) & (data ^ sum) & 0x80 != 0);
+
+        // Zero flag
+        self.registers.set_flag_zero(sum == 0);
+
+        // Negative flag
+        self.registers.set_flag_negative(sum & 0x80 != 0);
 
         self.registers.a = sum;
     }
 
-    /// ADC (Add with Carry)
+    /// ## ADC (Add with Carry)
     ///
     /// Add Memory to Accumulator with Carry
     ///
+    /// `A + M + C -> A, C`, Flags affected: `N` `V` `Z` `C`
     ///
+    /// | Addressing Mode | Assembly Language Form | Opcode | Bytes | Cycles |
     fn adc(&mut self, mode: AddressingMode) {
         let address = self.get_address_from_mode(mode);
         let data = self.memory.read(address);
@@ -294,13 +300,13 @@ mod tests {
         fn addressing_mode_indirect_y() {
             let mut cpu = setup();
             cpu.reset();
-            cpu.memory.write(0x8000, 0x01); // `0x01` + RegY (0x03) = 0x04
+            cpu.memory.write(0x8000, 0x04);
             cpu.memory.write(0x8001, 0x02);
             cpu.memory.write(0x0004, 0x03);
             cpu.memory.write(0x0005, 0x04);
-            cpu.registers.y = 0x03;
+            cpu.registers.y = 0x02;
 
-            assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectY), 0x0403);
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectY), 0x0405);
             assert_eq!(cpu.registers.pc, 0x8003);
         }
 
@@ -344,17 +350,21 @@ mod tests {
         fn _0x69() {
             let mut cpu = setup();
             cpu.reset();
-            cpu.registers.a = 0xFE;
+            cpu.registers.a = 0x78;
             cpu.registers.set_flag_carry(true);
-            cpu.memory.write(0x8000, 0x69); // ADC, Immediate
-            cpu.memory.write(0x8001, 0x02);
-            cpu.memory.write(0x8002, 0x00);
+            cpu.load(&[
+                0x69, 0x07, // ADC #$07
+                0x00,
+            ]);
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.a, 0x01);
+            assert_eq!(cpu.registers.a, 0x80);
             assert_eq!(cpu.registers.pc, 0x8003);
-            assert_eq!(cpu.registers.get_flag_carry(), true);
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_overflow(), true);
+            assert_eq!(cpu.registers.get_flag_negative(), true);
         }
     }
 }
