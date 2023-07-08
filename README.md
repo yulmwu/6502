@@ -15,3 +15,7 @@ it has five 8-bit registers (A, X, Y, P, S) and a 16-bit program counter (PC), a
 - [ ] Implement interrupts
 - [ ] Assembler
 - [ ] Debugger
+
+# References
+
+- [6502 Instruction Set](https://www.masswerk.at/6502/6502_instruction_set.html)
