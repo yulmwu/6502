@@ -126,6 +126,11 @@ impl Registers {
     pub fn get_flag_carry(&self) -> bool {
         self.p & 0b0000_0001 != 0
     }
+
+    pub fn set_zero_negative_flags(&mut self, value: u8) {
+        self.set_flag_zero(value == 0);
+        self.set_flag_negative(value & 0b1000_0000 != 0);
+    }
 }
 
 #[cfg(test)]

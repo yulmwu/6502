@@ -54,6 +54,16 @@ where
                 0x61 => self.adc(AddressingMode::IndirectX),
                 0x71 => self.adc(AddressingMode::IndirectY),
 
+                // AND
+                0x29 => self.and(AddressingMode::Immediate),
+                0x25 => self.and(AddressingMode::ZeroPage),
+                0x35 => self.and(AddressingMode::ZeroPageX),
+                0x2D => self.and(AddressingMode::Absolute),
+                0x3D => self.and(AddressingMode::AbsoluteX),
+                0x39 => self.and(AddressingMode::AbsoluteY),
+                0x21 => self.and(AddressingMode::IndirectX),
+                0x31 => self.and(AddressingMode::IndirectY),
+
                 // BRK
                 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -168,11 +178,7 @@ where
         self.registers
             .set_flag_overflow((self.registers.a ^ sum) & (data ^ sum) & 0x80 != 0);
 
-        // Zero flag
-        self.registers.set_flag_zero(sum == 0);
-
-        // Negative flag
-        self.registers.set_flag_negative(sum & 0x80 != 0);
+        self.registers.set_zero_negative_flags(sum);
 
         self.registers.a = sum;
     }
@@ -182,12 +188,23 @@ where
     /// Add Memory to Accumulator with Carry
     ///
     /// `A + M + C -> A, C`, Flags affected: `N` `V` `Z` `C`
-    ///
-    /// | Addressing Mode | Assembly Language Form | Opcode | Bytes | Cycles |
     fn adc(&mut self, mode: AddressingMode) {
         let address = self.get_address_from_mode(mode);
         let data = self.memory.read(address);
         self.add_to_accumulator_with_carry(data);
+    }
+
+    /// ## AND (Logical AND)
+    ///
+    /// AND Memory with Accumulator
+    ///
+    /// `A AND M -> A`, Flags affected: `N` `Z`
+    fn and(&mut self, mode: AddressingMode) {
+        let address = self.get_address_from_mode(mode);
+        let data = self.memory.read(address);
+        self.registers.a &= data;
+
+        self.registers.set_zero_negative_flags(self.registers.a);
     }
 }
 
@@ -344,10 +361,10 @@ mod tests {
     }
 
     #[cfg(test)]
-    mod instruction_adc {
+    mod instruction {
         use super::*;
         #[test]
-        fn _0x69() {
+        fn adc() {
             let mut cpu = setup();
             cpu.reset();
             cpu.registers.a = 0x78;
@@ -365,6 +382,24 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_overflow(), true);
             assert_eq!(cpu.registers.get_flag_negative(), true);
+        }
+
+        #[test]
+        fn and() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x78; // 0111 1000
+            cpu.load(&[
+                0x29, 0x07, // AND #$07 ; 0000 0111
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0x00);
+            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq!(cpu.registers.get_flag_zero(), true);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
         }
     }
 }
