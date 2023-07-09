@@ -1,3 +1,5 @@
+use std::fmt;
+
 /// # Registers
 ///
 /// ## 8 bit
@@ -26,6 +28,27 @@ pub struct Registers {
     pub p: u8,
     pub sp: u8,
     pub pc: u16,
+}
+
+impl fmt::Display for Registers {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        writeln!(
+            f,
+            "Registers: A={:02X} X={:02X} Y={:02X} SP={:02X} PC={:04X}",
+            self.a, self.x, self.y, self.sp, self.pc
+        )?;
+        write!(
+            f,
+            "Flag Registers (NV-B DIZC): {} {} - {}  {} {} {} {}",
+            self.get_flag_negative() as u8,
+            self.get_flag_overflow() as u8,
+            self.get_flag_break() as u8,
+            self.get_flag_decimal() as u8,
+            self.get_flag_interrupt_disable() as u8,
+            self.get_flag_zero() as u8,
+            self.get_flag_carry() as u8
+        )
+    }
 }
 
 impl Registers {
