@@ -111,3 +111,33 @@ mod tests {
         assert_eq!(memory.read_addr(0x0000), 0x1234);
     }
 }
+
+pub fn memory_hexdump(memory: &Memory, start: u16, end: u16) -> String {
+    let mut result = Vec::new();
+
+    for addr in (start..=end).step_by(16) {
+        let mut line = format!("[0x{:04X}] ", addr);
+
+        for i in 0..16 {
+            let data = memory.read(addr + i);
+            line.push_str(&format!("{:02X} ", data));
+        }
+
+        line.push_str("| ");
+
+        for i in 0..16 {
+            let data = memory.read(addr + i);
+            if data.is_ascii_control() {
+                line.push('.');
+            } else {
+                line.push(data as char);
+            }
+        }
+
+        line.push_str(" |");
+
+        result.push(line);
+    }
+
+    result.join("\n")
+}

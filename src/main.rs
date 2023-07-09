@@ -1,6 +1,6 @@
 use emulator::{
     cpu::Cpu,
-    memory::{Memory, MemoryBus},
+    memory::{memory_hexdump, Memory, MemoryBus},
 };
 
 fn main() {
@@ -15,10 +15,21 @@ fn main() {
 
     cpu.execute();
 
-    println!(
-        "{:?} {} {}",
-        cpu.registers.a,
-        cpu.registers.get_flag_carry(),
-        cpu.registers.get_flag_overflow()
-    );
+    // H e l l o   W o r l d !
+    cpu.memory.write(0x8020, 0x48); // H
+    cpu.memory.write(0x8021, 0x65); // e
+    cpu.memory.write(0x8022, 0x6C); // l
+    cpu.memory.write(0x8023, 0x6C); // l
+    cpu.memory.write(0x8024, 0x6F); // o
+    cpu.memory.write(0x8025, 0x20); // <space>
+    cpu.memory.write(0x8026, 0x57); // W
+    cpu.memory.write(0x8027, 0x6F); // o
+    cpu.memory.write(0x8028, 0x72); // r
+    cpu.memory.write(0x8029, 0x6C); // l
+    cpu.memory.write(0x802A, 0x64); // d
+    cpu.memory.write(0x802B, 0x21); // !
+
+    println!("{cpu}");
+    println!("{}", memory_hexdump(&cpu.memory, 0x0000, 0x0020));
+    println!("{}", memory_hexdump(&cpu.memory, 0x8000, 0x8030));
 }
