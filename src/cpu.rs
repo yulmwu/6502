@@ -1,5 +1,7 @@
 #![allow(dead_code)]
 
+use std::fmt;
+
 use crate::{
     addressing_mode::AddressingMode,
     memory::{MemoryBus, STACK_BASE},
@@ -14,6 +16,15 @@ where
 {
     pub registers: Registers,
     pub memory: T,
+}
+
+impl<T> fmt::Display for Cpu<T>
+where
+    T: MemoryBus<Data = u8, Addr = u16>,
+{
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.registers)
+    }
 }
 
 impl<T> Cpu<T>
