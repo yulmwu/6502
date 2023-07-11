@@ -152,7 +152,7 @@ impl Registers {
 
     pub fn set_zero_negative_flags(&mut self, value: u8) {
         self.set_flag_zero(value == 0);
-        self.set_flag_negative(value & 0b1000_0000 != 0);
+        self.set_flag_negative(value & 0x80 != 0);
     }
 }
 
