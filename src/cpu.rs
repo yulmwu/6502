@@ -75,6 +75,13 @@ where
                 0x21 => self.and(AddressingMode::IndirectX),
                 0x31 => self.and(AddressingMode::IndirectY),
 
+                // ASL
+                0x0A => self.asl(None), // Accumulator
+                0x06 => self.asl(Some(AddressingMode::ZeroPage)),
+                0x16 => self.asl(Some(AddressingMode::ZeroPageX)),
+                0x0E => self.asl(Some(AddressingMode::Absolute)),
+                0x1E => self.asl(Some(AddressingMode::AbsoluteX)),
+
                 // BRK
                 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -173,17 +180,27 @@ where
         }
     }
 
+    fn get_data_from_addressing_mode(&mut self, mode: AddressingMode) -> T::Data {
+        let address = self.get_address_from_mode(mode);
+        self.memory.read(address)
+    }
+
+    fn get_address_from_addressing_mode(&mut self, mode: AddressingMode) -> T::Addr {
+        let address = self.get_address_from_mode(mode);
+        self.memory.read_addr(address)
+    }
+
     fn add_to_accumulator_with_carry(&mut self, data: T::Data) {
         let sum = if self.registers.get_flag_carry() {
-            self.registers.a as u16 + data as u16 + 1
+            self.registers.a as T::Addr + data as T::Addr + 1
         } else {
-            self.registers.a as u16 + data as u16
+            self.registers.a as T::Addr + data as T::Addr
         };
 
         // Carry flag
         self.registers.set_flag_carry(sum > 0xFF);
 
-        let sum = sum as u8;
+        let sum = sum as T::Data;
 
         // Overflow flag
         self.registers
@@ -200,8 +217,7 @@ where
     ///
     /// `A + M + C -> A, C`, Flags affected: `N` `V` `Z` `C`
     fn adc(&mut self, mode: AddressingMode) {
-        let address = self.get_address_from_mode(mode);
-        let data = self.memory.read(address);
+        let data = self.get_data_from_addressing_mode(mode);
         self.add_to_accumulator_with_carry(data);
     }
 
@@ -211,11 +227,35 @@ where
     ///
     /// `A AND M -> A`, Flags affected: `N` `Z`
     fn and(&mut self, mode: AddressingMode) {
-        let address = self.get_address_from_mode(mode);
-        let data = self.memory.read(address);
+        let data = self.get_data_from_addressing_mode(mode);
         self.registers.a &= data;
 
         self.registers.set_zero_negative_flags(self.registers.a);
+    }
+
+    /// ## ASL (Arithmetic Shift Left)
+    ///
+    /// Shift Left One Bit (Memory or Accumulator)
+    ///
+    /// `C <- [76543210] <- 0`, Flags affected: `N` `Z` `C`
+    fn asl(&mut self, mode: Option<AddressingMode>) {
+        let mut data = match mode {
+            Some(mode) => self.get_data_from_addressing_mode(mode),
+            None => self.registers.a,
+        };
+
+        self.registers.set_flag_carry(data & 0x80 != 0);
+
+        data <<= 1;
+
+        self.registers.set_zero_negative_flags(data);
+
+        if let Some(mode) = mode {
+            let address = self.get_address_from_mode(mode);
+            self.memory.write(address, data);
+        } else {
+            self.registers.a = data;
+        }
     }
 }
 
@@ -411,6 +451,25 @@ mod tests {
             assert_eq!(cpu.registers.pc, 0x8003);
             assert_eq!(cpu.registers.get_flag_zero(), true);
             assert_eq!(cpu.registers.get_flag_negative(), false);
+        }
+
+        #[test]
+        fn asl() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x78; // 0111 1000
+            cpu.load(&[
+                0x0A, // ASL
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0xF0); // 1111 0000
+            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), true);
         }
     }
 }
