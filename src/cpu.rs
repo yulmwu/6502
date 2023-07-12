@@ -140,6 +140,12 @@ where
 
                 base + self.registers.y as T::Addr
             }
+            AddressingMode::Indirect => {
+                let ptr = self.memory.read_addr(self.registers.pc);
+                self.registers.pc += 2;
+
+                self.memory.read_addr(ptr)
+            }
             AddressingMode::IndirectX => {
                 let base = self.memory.read(self.registers.pc);
                 self.registers.pc += 1;
@@ -347,6 +353,19 @@ mod tests {
             cpu.registers.y = 0x03;
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::AbsoluteY), 0x0204);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn addressing_mode_indirect() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x8000, 0x01);
+            cpu.memory.write(0x8001, 0x02);
+            cpu.memory.write(0x0201, 0x03);
+            cpu.memory.write(0x0202, 0x04);
+
+            assert_eq!(cpu.get_address_from_mode(AddressingMode::Indirect), 0x0403);
             assert_eq!(cpu.registers.pc, 0x8002);
         }
 
