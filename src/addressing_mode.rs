@@ -7,7 +7,7 @@ pub enum AddressingMode {
     Absolute,
     AbsoluteX,
     AbsoluteY,
-    // Indirect,
+    Indirect,
     IndirectX,
     IndirectY,
     ZeroPage,
