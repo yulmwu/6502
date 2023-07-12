@@ -11,7 +11,7 @@ in assembly language, the `A` is omitted like `LSR`, `ROR` ...
 
 ## Immediate Addressing Mode
 
-The instruction contains operands. Example: `LDA #$01`, `LDX #$02` ...
+The instruction contains 8-bit operands. Example: `LDA #$01`, `LDX #$02` ...
 
 ```
 Mnemonic        Instruction (Hex)
@@ -20,20 +20,24 @@ LDA #7          A9 01
                    +--> Register A
 ```
 
-## Absolute Addressing Mode
+## Absolute(Direct) Addressing Mode
 
-The instructions contain 16-bits of memory address. Example: `LDA $1234`, `LDX $5678` ...
+The instructions contain 16-bit operands. Example: `LDA $1234`, `LDX $5678` ...
 
 ```
 Mnemonic        Instruction (Hex)
 LDA $1234       AD 34 12
                    |
-                   +--> M[1234] -> Register A
+                   +--> Register A
 ```
 
 ## Indirect Addressing Mode
 
-The instructions contain 16-bits of pointer address. Example: `JMP ($1234)` ...
+The instructions contain 16-bit operand and the memory at the address of the operand is the effective address.
+
+only `JMP` instruction can use this addressing mode and in assembly language, the label is used instead of the operand.
+
+Example: `JMP ($1234)` ...
 
 ```
 Mnemonic        Instruction (Hex)
@@ -44,7 +48,7 @@ JMP ($1234)     6C 34 12
 
 ## Zero Page Addressing Mode
 
-The instructions contain 8-bits of memory address. Example: `LDA $12`, `LDX $34` ...
+Zero Page that indicates only range from `0x0000` to `0x00FF` for memory section and fast access Example: `LDA $12`, `LDX $34` ...
 
 ```
 Mnemonic        Instruction (Hex)
