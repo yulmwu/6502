@@ -57,6 +57,21 @@ LDA $12         A5 12
                    +--> M[0012] -> Register A
 ```
 
+## Relative Addressing Mode
+
+The instruction contains signed 8-bit operand and the operand is added to the program counter(PC) to get the effective address.
+
+Example: `BNE $01` ...
+
+```
+Mnemonic        Instruction (Hex)
+BNE $12         D0 12
+                   |
+                   +--> PC + 12 + 1 -> PC
+```
+
+last `+ 1` is because the program counter is incremented by 1 after the instruction is fetched.
+
 # Indexed Addressing Mode
 
 Indexed addressing mode is a way to access memory by adding an offset to a base address.

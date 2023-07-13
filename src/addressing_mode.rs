@@ -13,4 +13,5 @@ pub enum AddressingMode {
     ZeroPage,
     ZeroPageX,
     ZeroPageY,
+    // Relative,
 }
