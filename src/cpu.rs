@@ -82,6 +82,9 @@ where
                 0x0E => self.asl(Some(AddressingMode::Absolute)),
                 0x1E => self.asl(Some(AddressingMode::AbsoluteX)),
 
+                // BCC
+                0x90 => self.bcc(),
+
                 // BRK
                 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -217,6 +220,14 @@ where
         self.registers.a = sum;
     }
 
+    fn branch(&mut self) {
+        let offset = self.memory.read(self.registers.pc) as i8;
+        self.registers.pc += 1;
+
+        let pc = self.registers.pc as T::Addr;
+        self.registers.pc = pc.wrapping_add(offset as T::Addr);
+    }
+
     /// ## ADC (Add with Carry)
     ///
     /// Add Memory to Accumulator with Carry
@@ -261,6 +272,19 @@ where
             self.memory.write(address, data);
         } else {
             self.registers.a = data;
+        }
+    }
+
+    /// ## BCC (Branch if Carry Clear)
+    ///
+    /// Branch on Carry Clear
+    ///
+    /// `branch on C = 0`, Flags affected: None
+    fn bcc(&mut self) {
+        if !self.registers.get_flag_carry() {
+            self.branch();
+        } else {
+            self.registers.pc += 1;
         }
     }
 }
@@ -489,6 +513,21 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), true);
+        }
+
+        #[test]
+        fn bcc() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_carry(false);
+            cpu.load(&[
+                0x90, 0x02, // BCC
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8005);
         }
     }
 }
