@@ -85,6 +85,9 @@ where
                 // BCC
                 0x90 => self.bcc(),
 
+                // BCS
+                0xB0 => self.bcs(),
+
                 // BRK
                 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -282,6 +285,19 @@ where
     /// `branch on C = 0`, Flags affected: None
     fn bcc(&mut self) {
         if !self.registers.get_flag_carry() {
+            self.branch();
+        } else {
+            self.registers.pc += 1;
+        }
+    }
+
+    /// ## BCS (Branch if Carry Set)
+    /// 
+    /// Branch on Carry Set
+    /// 
+    /// `branch on C = 1`, Flags affected: None
+    fn bcs(&mut self) {
+        if self.registers.get_flag_carry() {
             self.branch();
         } else {
             self.registers.pc += 1;
@@ -522,6 +538,21 @@ mod tests {
             cpu.registers.set_flag_carry(false);
             cpu.load(&[
                 0x90, 0x02, // BCC
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8005);
+        }
+
+        #[test]
+        fn bcs() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_carry(true);
+            cpu.load(&[
+                0xB0, 0x02, // BCS
                 0x00,
             ]);
 
