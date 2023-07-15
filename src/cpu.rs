@@ -91,6 +91,13 @@ where
                 // BEQ
                 0xF0 => self.beq(),
 
+                // BIT
+                0x24 => self.bit(AddressingMode::ZeroPage),
+                0x2C => self.bit(AddressingMode::Absolute),
+
+                // BMI
+                0x30 => self.bmi(),
+
                 // BRK
                 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -314,6 +321,23 @@ where
     /// `branch on Z = 1`, Flags affected: None
     fn beq(&mut self) {
         if self.registers.get_flag_zero() {
+            self.branch();
+        } else {
+            self.registers.pc += 1;
+        }
+    }
+
+    fn bit(&mut self, _: AddressingMode) {
+        todo!()
+    }
+
+    /// ## BMI (Branch if Minus)
+    /// 
+    /// Branch on Result Minus
+    /// 
+    /// `branch on N = 1`, Flags affected: None
+    fn bmi(&mut self) {
+        if self.registers.get_flag_negative() {
             self.branch();
         } else {
             self.registers.pc += 1;
@@ -591,5 +615,8 @@ mod tests {
 
             assert_eq!(cpu.registers.pc, 0x8005);
         }
+
+        #[test]
+        fn bit() {}
     }
 }
