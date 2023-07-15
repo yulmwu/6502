@@ -98,6 +98,12 @@ where
                 // BMI
                 0x30 => self.bmi(),
 
+                // BNE
+                0xD0 => self.bne(),
+
+                // BPL
+                0x10 => self.bpl(),
+
                 // BRK
                 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -332,12 +338,38 @@ where
     }
 
     /// ## BMI (Branch if Minus)
-    /// 
+    ///
     /// Branch on Result Minus
-    /// 
+    ///
     /// `branch on N = 1`, Flags affected: None
     fn bmi(&mut self) {
         if self.registers.get_flag_negative() {
+            self.branch();
+        } else {
+            self.registers.pc += 1;
+        }
+    }
+
+    /// ## BNE (Branch if Not Equal)
+    ///
+    /// Branch on Result not Zero
+    ///
+    /// `branch on Z = 0`, Flags affected: None
+    fn bne(&mut self) {
+        if !self.registers.get_flag_zero() {
+            self.branch();
+        } else {
+            self.registers.pc += 1;
+        }
+    }
+
+    /// ## BPL (Branch if Plus)
+    ///
+    /// Branch on Result Plus
+    ///
+    /// `branch on N = 0`, Flags affected: None
+    fn bpl(&mut self) {
+        if !self.registers.get_flag_negative() {
             self.branch();
         } else {
             self.registers.pc += 1;
@@ -618,5 +650,50 @@ mod tests {
 
         #[test]
         fn bit() {}
+
+        #[test]
+        fn bmi() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_negative(true);
+            cpu.load(&[
+                0x30, 0x02, // BMI
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8005);
+        }
+
+        #[test]
+        fn bne() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_zero(false);
+            cpu.load(&[
+                0xD0, 0x02, // BNE
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8005);
+        }
+
+        #[test]
+        fn bpl() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_negative(false);
+            cpu.load(&[
+                0x10, 0x02, // BPL
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8005);
+        }
     }
 }
