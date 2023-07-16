@@ -82,36 +82,22 @@ where
                 0x0E => self.asl(Some(AddressingMode::Absolute)),
                 0x1E => self.asl(Some(AddressingMode::AbsoluteX)),
 
-                // BCC
-                0x90 => self.bcc(),
-
-                // BCS
-                0xB0 => self.bcs(),
-
-                // BEQ
-                0xF0 => self.beq(),
+                /* BCC */ 0x90 => self.bcc(),
+                /* BCS */ 0xB0 => self.bcs(),
+                /* BEQ */ 0xF0 => self.beq(),
 
                 // BIT
                 0x24 => self.bit(AddressingMode::ZeroPage),
                 0x2C => self.bit(AddressingMode::Absolute),
 
-                // BMI
-                0x30 => self.bmi(),
+                /* BMI */ 0x30 => self.bmi(),
+                /* BNE */ 0xD0 => self.bne(),
+                /* BPL */ 0x10 => self.bpl(),
+                /* BVC */ 0x50 => self.bvc(),
+                /* BVS */ 0x70 => self.bvs(),
+                /* CLC */ 0x18 => self.clc(),
 
-                // BNE
-                0xD0 => self.bne(),
-
-                // BPL
-                0x10 => self.bpl(),
-
-                // BVC
-                0x50 => self.bvc(),
-
-                // BVS
-                0x70 => self.bvs(),
-
-                // BRK
-                0x00 => break,
+                /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
         }
@@ -406,6 +392,15 @@ where
         } else {
             self.registers.pc += 1;
         }
+    }
+
+    /// ## CLC (Clear Carry Flag)
+    ///
+    /// Clear Carry Flag
+    ///
+    /// `0 -> C`, Flags affected: `C`
+    fn clc(&mut self) {
+        self.registers.set_flag_carry(false);
     }
 }
 
@@ -759,6 +754,22 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.pc, 0x8005);
+        }
+
+        #[test]
+        fn clc() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_carry(true);
+            cpu.load(&[
+                0x18, // CLC
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
         }
     }
 }
