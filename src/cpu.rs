@@ -104,6 +104,12 @@ where
                 // BPL
                 0x10 => self.bpl(),
 
+                // BVC
+                0x50 => self.bvc(),
+
+                // BVS
+                0x70 => self.bvs(),
+
                 // BRK
                 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -370,6 +376,32 @@ where
     /// `branch on N = 0`, Flags affected: None
     fn bpl(&mut self) {
         if !self.registers.get_flag_negative() {
+            self.branch();
+        } else {
+            self.registers.pc += 1;
+        }
+    }
+
+    /// ## BVC (Branch if Overflow Clear)
+    ///
+    /// Branch on Overflow Clear
+    ///
+    /// `branch on V = 0`, Flags affected: None
+    fn bvc(&mut self) {
+        if !self.registers.get_flag_overflow() {
+            self.branch();
+        } else {
+            self.registers.pc += 1;
+        }
+    }
+
+    /// ## BVS (Branch if Overflow Set)
+    ///
+    /// Branch on Overflow Set
+    ///
+    /// `branch on V = 1`, Flags affected: None
+    fn bvs(&mut self) {
+        if self.registers.get_flag_overflow() {
             self.branch();
         } else {
             self.registers.pc += 1;
@@ -688,6 +720,39 @@ mod tests {
             cpu.registers.set_flag_negative(false);
             cpu.load(&[
                 0x10, 0x02, // BPL
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8005);
+        }
+
+        #[test]
+        fn brk() {}
+
+        #[test]
+        fn bvc() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_overflow(false);
+            cpu.load(&[
+                0x50, 0x02, // BVC
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8005);
+        }
+
+        #[test]
+        fn bvs() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_overflow(true);
+            cpu.load(&[
+                0x70, 0x02, // BVS
                 0x00,
             ]);
 
