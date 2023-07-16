@@ -100,6 +100,16 @@ where
                 /* CLI */ 0x58 => self.cli(),
                 /* CLV */ 0xB8 => self.clv(),
 
+                // CMP
+                0xC9 => self.cmp(AddressingMode::Immediate),
+                0xC5 => self.cmp(AddressingMode::ZeroPage),
+                0xD5 => self.cmp(AddressingMode::ZeroPageX),
+                0xCD => self.cmp(AddressingMode::Absolute),
+                0xDD => self.cmp(AddressingMode::AbsoluteX),
+                0xD9 => self.cmp(AddressingMode::AbsoluteY),
+                0xC1 => self.cmp(AddressingMode::IndirectX),
+                0xD1 => self.cmp(AddressingMode::IndirectY),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -431,6 +441,18 @@ where
     /// `0 -> V`, Flags affected: `V`
     fn clv(&mut self) {
         self.registers.set_flag_overflow(false);
+    }
+
+    /// ## CMP (Compare Memory with Accumulator)
+    ///
+    /// Compare Memory with Accumulator
+    ///
+    /// `A - M`, Flags affected: `N` `Z` `C`
+    fn cmp(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        let result = self.registers.a.wrapping_sub(data);
+        self.registers.set_zero_negative_flags(result);
+        self.registers.set_flag_carry(self.registers.a >= data);
     }
 }
 
@@ -848,6 +870,24 @@ mod tests {
 
             assert_eq!(cpu.registers.get_flag_overflow(), false);
             assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn cmp() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x40;
+            cpu.load(&[
+                0xC9, 0x80, // CMP
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), true);
+            assert_eq!(cpu.registers.pc, 0x8003);
         }
     }
 }
