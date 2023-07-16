@@ -96,6 +96,9 @@ where
                 /* BVC */ 0x50 => self.bvc(),
                 /* BVS */ 0x70 => self.bvs(),
                 /* CLC */ 0x18 => self.clc(),
+                /* CLD */ 0xD8 => self.cld(),
+                /* CLI */ 0x58 => self.cli(),
+                /* CLV */ 0xB8 => self.clv(),
 
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -401,6 +404,33 @@ where
     /// `0 -> C`, Flags affected: `C`
     fn clc(&mut self) {
         self.registers.set_flag_carry(false);
+    }
+
+    /// ## CLD (Clear Decimal Mode)
+    ///
+    /// Clear Decimal Mode
+    ///
+    /// `0 -> D`, Flags affected: `D`
+    fn cld(&mut self) {
+        self.registers.set_flag_decimal(false);
+    }
+
+    /// ## CLI (Clear Interrupt Disable)
+    ///
+    /// Clear Interrupt Disable Bit
+    ///
+    /// `0 -> I`, Flags affected: `I`
+    fn cli(&mut self) {
+        self.registers.set_flag_interrupt_disable(false);
+    }
+
+    /// ## CLV (Clear Overflow Flag)
+    ///
+    /// Clear Overflow Flag
+    ///
+    /// `0 -> V`, Flags affected: `V`
+    fn clv(&mut self) {
+        self.registers.set_flag_overflow(false);
     }
 }
 
@@ -769,6 +799,54 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn cld() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_decimal(true);
+            cpu.load(&[
+                0xD8, // CLD
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_decimal(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn cli() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_interrupt_disable(true);
+            cpu.load(&[
+                0x58, // CLI
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_interrupt_disable(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn clv() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_overflow(true);
+            cpu.load(&[
+                0xB8, // CLV
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_overflow(), false);
             assert_eq!(cpu.registers.pc, 0x8002);
         }
     }
