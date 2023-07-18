@@ -110,6 +110,16 @@ where
                 0xC1 => self.cmp(AddressingMode::IndirectX),
                 0xD1 => self.cmp(AddressingMode::IndirectY),
 
+                // CPX
+                0xE0 => self.cpx(AddressingMode::Immediate),
+                0xE4 => self.cpx(AddressingMode::ZeroPage),
+                0xEC => self.cpx(AddressingMode::Absolute),
+
+                // CPY
+                0xC0 => self.cpy(AddressingMode::Immediate),
+                0xC4 => self.cpy(AddressingMode::ZeroPage),
+                0xCC => self.cpy(AddressingMode::Absolute),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -453,6 +463,30 @@ where
         let result = self.registers.a.wrapping_sub(data);
         self.registers.set_zero_negative_flags(result);
         self.registers.set_flag_carry(self.registers.a >= data);
+    }
+
+    /// ## CPX (Compare Memory and Index X)
+    ///
+    /// Compare Memory and Index X
+    ///
+    /// `X - M`, Flags affected: `N` `Z` `C`
+    fn cpx(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        let result = self.registers.x.wrapping_sub(data);
+        self.registers.set_zero_negative_flags(result);
+        self.registers.set_flag_carry(self.registers.x >= data);
+    }
+
+    /// ## CPY (Compare Memory and Index Y)
+    /// 
+    /// Compare Memory and Index Y
+    /// 
+    /// `Y - M`, Flags affected: `N` `Z` `C`
+    fn cpy(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        let result = self.registers.y.wrapping_sub(data);
+        self.registers.set_zero_negative_flags(result);
+        self.registers.set_flag_carry(self.registers.y >= data);
     }
 }
 
@@ -879,6 +913,42 @@ mod tests {
             cpu.registers.a = 0x40;
             cpu.load(&[
                 0xC9, 0x80, // CMP
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), true);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn cpx() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x40;
+            cpu.load(&[
+                0xE0, 0x80, // CPX
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), true);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn cpy() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.y = 0x40;
+            cpu.load(&[
+                0xC0, 0x80, // CPY
                 0x00,
             ]);
 
