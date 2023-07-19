@@ -126,6 +126,9 @@ where
                 0xCE => self.dec(AddressingMode::Absolute),
                 0xDE => self.dec(AddressingMode::AbsoluteX),
 
+                /* DEX */ 0xCA => self.dex(),
+                /* DEY */ 0x88 => self.dey(),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -506,6 +509,26 @@ where
         data = data.wrapping_sub(1);
         self.memory.write(addr, data);
         self.registers.set_zero_negative_flags(data);
+    }
+
+    /// ## DEX (Decrement Index X by One)
+    ///
+    /// Decrement Index X by One
+    ///
+    /// `X - 1 -> X`, Flags affected: `N` `Z`
+    fn dex(&mut self) {
+        self.registers.x = self.registers.x.wrapping_sub(1);
+        self.registers.set_zero_negative_flags(self.registers.x);
+    }
+
+    /// ## DEY (Decrement Index Y by One)
+    ///
+    /// Decrement Index Y by One
+    ///
+    /// `Y - 1 -> Y`, Flags affected: `N` `Z`
+    fn dey(&mut self) {
+        self.registers.y = self.registers.y.wrapping_sub(1);
+        self.registers.set_zero_negative_flags(self.registers.y);
     }
 }
 
@@ -995,6 +1018,42 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_zero(), true);
             assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn dex() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x01;
+            cpu.load(&[
+                0xCA, // DEX
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.x, 0x00);
+            assert_eq!(cpu.registers.get_flag_zero(), true);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn dey() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.y = 0x01;
+            cpu.load(&[
+                0x88, // DEY
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.y, 0x00);
+            assert_eq!(cpu.registers.get_flag_zero(), true);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
         }
     }
 }
