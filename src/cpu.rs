@@ -120,6 +120,12 @@ where
                 0xC4 => self.cpy(AddressingMode::ZeroPage),
                 0xCC => self.cpy(AddressingMode::Absolute),
 
+                // DEC
+                0xC6 => self.dec(AddressingMode::ZeroPage),
+                0xD6 => self.dec(AddressingMode::ZeroPageX),
+                0xCE => self.dec(AddressingMode::Absolute),
+                0xDE => self.dec(AddressingMode::AbsoluteX),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -478,15 +484,28 @@ where
     }
 
     /// ## CPY (Compare Memory and Index Y)
-    /// 
+    ///
     /// Compare Memory and Index Y
-    /// 
+    ///
     /// `Y - M`, Flags affected: `N` `Z` `C`
     fn cpy(&mut self, mode: AddressingMode) {
         let data = self.get_data_from_addressing_mode(mode);
         let result = self.registers.y.wrapping_sub(data);
         self.registers.set_zero_negative_flags(result);
         self.registers.set_flag_carry(self.registers.y >= data);
+    }
+
+    /// ## DEC (Decrement Memory by One)
+    ///
+    /// Decrement Memory by One
+    ///
+    /// `M - 1 -> M`, Flags affected: `N` `Z`
+    fn dec(&mut self, mode: AddressingMode) {
+        let addr = self.get_address_from_mode(mode);
+        let mut data = self.memory.read(addr);
+        data = data.wrapping_sub(1);
+        self.memory.write(addr, data);
+        self.registers.set_zero_negative_flags(data);
     }
 }
 
@@ -957,6 +976,24 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), true);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn dec() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x00, 0x01);
+            cpu.load(&[
+                0xC6, 0x00, // DEC
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.memory.read(0x00), 0x00);
+            assert_eq!(cpu.registers.get_flag_zero(), true);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq!(cpu.registers.pc, 0x8003);
         }
     }
