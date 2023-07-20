@@ -139,6 +139,15 @@ where
                 0x41 => self.eor(AddressingMode::IndirectX),
                 0x51 => self.eor(AddressingMode::IndirectY),
 
+                // INC
+                0xE6 => self.inc(AddressingMode::ZeroPage),
+                0xF6 => self.inc(AddressingMode::ZeroPageX),
+                0xEE => self.inc(AddressingMode::Absolute),
+                0xFE => self.inc(AddressingMode::AbsoluteX),
+
+                /* INX */ 0xE8 => self.inx(),
+                /* INY */ 0xC8 => self.iny(),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -550,6 +559,39 @@ where
         let data = self.get_data_from_addressing_mode(mode);
         self.registers.a ^= data;
         self.registers.set_zero_negative_flags(self.registers.a);
+    }
+
+    /// ## INC (Increment Memory by One)
+    ///
+    /// Increment Memory by One
+    ///
+    /// `M + 1 -> M`, Flags affected: `N` `Z`
+    fn inc(&mut self, mode: AddressingMode) {
+        let addr = self.get_address_from_mode(mode);
+        let mut data = self.memory.read(addr);
+        data = data.wrapping_add(1);
+        self.memory.write(addr, data);
+        self.registers.set_zero_negative_flags(data);
+    }
+
+    /// ## INX (Increment Index X by One)
+    ///
+    /// Increment Index X by One
+    ///
+    /// `X + 1 -> X`, Flags affected: `N` `Z`
+    fn inx(&mut self) {
+        self.registers.x = self.registers.x.wrapping_add(1);
+        self.registers.set_zero_negative_flags(self.registers.x);
+    }
+
+    /// ## INY (Increment Index Y by One)
+    ///
+    /// Increment Index Y by One
+    ///
+    /// `Y + 1 -> Y`, Flags affected: `N` `Z`
+    fn iny(&mut self) {
+        self.registers.y = self.registers.y.wrapping_add(1);
+        self.registers.set_zero_negative_flags(self.registers.y);
     }
 }
 
@@ -1093,6 +1135,60 @@ mod tests {
             assert_eq!(cpu.registers.pc, 0x8003);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
+        }
+
+        #[test]
+        fn inc() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x00, 0x01);
+            cpu.load(&[
+                0xE6, 0x00, // INC
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.memory.read(0x00), 0x02);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn inx() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x01;
+            cpu.load(&[
+                0xE8, // INX
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.x, 0x02);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn iny() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.y = 0x01;
+            cpu.load(&[
+                0xC8, // INY
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.y, 0x02);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
         }
     }
 }
