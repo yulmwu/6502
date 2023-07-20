@@ -129,6 +129,16 @@ where
                 /* DEX */ 0xCA => self.dex(),
                 /* DEY */ 0x88 => self.dey(),
 
+                // EOR
+                0x49 => self.eor(AddressingMode::Immediate),
+                0x45 => self.eor(AddressingMode::ZeroPage),
+                0x55 => self.eor(AddressingMode::ZeroPageX),
+                0x4D => self.eor(AddressingMode::Absolute),
+                0x5D => self.eor(AddressingMode::AbsoluteX),
+                0x59 => self.eor(AddressingMode::AbsoluteY),
+                0x41 => self.eor(AddressingMode::IndirectX),
+                0x51 => self.eor(AddressingMode::IndirectY),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -529,6 +539,17 @@ where
     fn dey(&mut self) {
         self.registers.y = self.registers.y.wrapping_sub(1);
         self.registers.set_zero_negative_flags(self.registers.y);
+    }
+
+    /// ## EOR (Exclusive OR Memory with Accumulator)
+    ///
+    /// Exclusive OR Memory with Accumulator
+    ///
+    /// `A EOR M -> A`, Flags affected: `N` `Z`
+    fn eor(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        self.registers.a ^= data;
+        self.registers.set_zero_negative_flags(self.registers.a);
     }
 }
 
@@ -1054,6 +1075,24 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_zero(), true);
             assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn eor() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x78; // 0111 1000
+            cpu.load(&[
+                0x49, 0x07, // EOR #$07 ; 0000 0111
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0x7F); // 0111 1111
+            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
         }
     }
 }
