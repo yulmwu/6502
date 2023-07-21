@@ -148,6 +148,10 @@ where
                 /* INX */ 0xE8 => self.inx(),
                 /* INY */ 0xC8 => self.iny(),
 
+                // JMP
+                0x4C => self.jmp(AddressingMode::Absolute),
+                0x6C => self.jmp(AddressingMode::Indirect),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -592,6 +596,16 @@ where
     fn iny(&mut self) {
         self.registers.y = self.registers.y.wrapping_add(1);
         self.registers.set_zero_negative_flags(self.registers.y);
+    }
+
+    /// ## JMP (Jump to New Location)
+    ///
+    /// Jump to New Location
+    ///
+    /// `PC -> E`, Flags affected: None
+    fn jmp(&mut self, mode: AddressingMode) {
+        let address = self.get_address_from_mode(mode);
+        self.registers.pc = address;
     }
 }
 
@@ -1189,6 +1203,24 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn jmp() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x01;
+            cpu.load(&[
+                /* $8001 */ 0x4C, 0x04, 0x80, // JMP $8005
+                /* $8004 */0xE8, // INX
+                /* $8005 */0xCA, // DEX
+                /* $8006 */0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8006);
+            assert_eq!(cpu.registers.x, 0x00);
         }
     }
 }
