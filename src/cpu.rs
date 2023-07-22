@@ -52,6 +52,7 @@ where
     pub fn execute(&mut self) {
         loop {
             let opcode = self.memory.read(self.registers.pc);
+            println!("PC: {:04X} OP: {:02X}", self.registers.pc, opcode);
             self.registers.pc += 1;
 
             match opcode {
@@ -1211,10 +1212,10 @@ mod tests {
             cpu.reset();
             cpu.registers.x = 0x01;
             cpu.load(&[
-                /* $8001 */ 0x4C, 0x04, 0x80, // JMP $8005
-                /* $8004 */0xE8, // INX
-                /* $8005 */0xCA, // DEX
-                /* $8006 */0x00,
+                /* $8000 */ 0x4C, 0x04, 0x80, // JMP $8004
+                /* $8003 */ 0xE8, // INX
+                /* $8004 */ 0xCA, // DEX
+                /* $8005 */ 0x00,
             ]);
 
             cpu.execute();
