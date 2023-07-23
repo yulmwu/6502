@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <title>Document</title>
+        <script type="module">
+            import init, { Emulator } from './wasm/pkg/wasm.js'
+            init().then(() => {
+                const evaluator = new Emulator()
+                // // console.log(evaluator)
+                // evaluator.load([0x4C, 0x04, 0x80, 0x00]);
+                // // console.log(evaluator.memory_hexdump(0x0000, 0xFFFF))
+                const input = document.getElementById('input')
+                const runButton = document.getElementById('run')
+                const output = document.getElementById('output')
+                const memoryDump = document.getElementById('memorydump')
+
+                input.value = '0x18\n0x00\n'
+
+                runButton.addEventListener('click', () => {
+                    evaluator.reset()
+                    let input = document
+                        .getElementById('input')
+                        .value.split('\n')
+                        .filter((line) => line.length > 0)
+                        .map((line) => line.split(' '))
+                        .map((line) => line.map((hex) => parseInt(hex, 16)))
+                        .flat()
+                    console.log(input)
+                    evaluator.load(input)
+                    evaluator.execute()
+                    output.value = evaluator.cpu_status()
+                    memoryDump.value = ''
+                    memoryDump.value += evaluator.memory_hexdump(0x0000, 0x10)
+                    memoryDump.value += '\n'
+                    memoryDump.value += evaluator.memory_hexdump(0x8000, 0x8030)
+                })
+            })
+        </script>
+    </head>
+    <body>
+        <h1>6502 Emulator</h1>
+        <textarea id="input" cols="80" rows="15"></textarea>
+        <button id="run">Run</button>
+        <div>
+            <h2>Output</h2>
+            <textarea id="output" cols="80" rows="3"></textarea>
+            <h4>Memory Dump</h4>
+            <textarea id="memorydump" cols="80" rows="10"></textarea>
+        </div>
+        <script></script>
+    </body>
+</html>
