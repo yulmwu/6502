@@ -153,6 +153,32 @@ where
                 0x4C => self.jmp(AddressingMode::Absolute),
                 0x6C => self.jmp(AddressingMode::Indirect),
 
+                /* JSR */ 0x20 => self.jsr(AddressingMode::Absolute),
+
+                // LDA
+                0xA9 => self.lda(AddressingMode::Immediate),
+                0xA5 => self.lda(AddressingMode::ZeroPage),
+                0xB5 => self.lda(AddressingMode::ZeroPageX),
+                0xAD => self.lda(AddressingMode::Absolute),
+                0xBD => self.lda(AddressingMode::AbsoluteX),
+                0xB9 => self.lda(AddressingMode::AbsoluteY),
+                0xA1 => self.lda(AddressingMode::IndirectX),
+                0xB1 => self.lda(AddressingMode::IndirectY),
+
+                // LDX
+                0xA2 => self.ldx(AddressingMode::Immediate),
+                0xA6 => self.ldx(AddressingMode::ZeroPage),
+                0xB6 => self.ldx(AddressingMode::ZeroPageY),
+                0xAE => self.ldx(AddressingMode::Absolute),
+                0xBE => self.ldx(AddressingMode::AbsoluteY),
+
+                // LDY
+                0xA0 => self.ldy(AddressingMode::Immediate),
+                0xA4 => self.ldy(AddressingMode::ZeroPage),
+                0xB4 => self.ldy(AddressingMode::ZeroPageX),
+                0xAC => self.ldy(AddressingMode::Absolute),
+                0xBC => self.ldy(AddressingMode::AbsoluteX),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -607,6 +633,43 @@ where
     fn jmp(&mut self, mode: AddressingMode) {
         let address = self.get_address_from_mode(mode);
         self.registers.pc = address;
+    }
+
+    fn jsr(&mut self, _: AddressingMode) {
+        todo!()
+    }
+
+    /// ## LDA (Load Accumulator with Memory)
+    ///
+    /// Load Accumulator with Memory
+    ///
+    /// `M -> A`, Flags affected: `N` `Z`
+    fn lda(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        self.registers.a = data;
+        self.registers.set_zero_negative_flags(self.registers.a);
+    }
+
+    /// ## LDX (Load Index X with Memory)
+    ///
+    /// Load Index X with Memory
+    ///
+    /// `M -> X`, Flags affected: `N` `Z`
+    fn ldx(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        self.registers.x = data;
+        self.registers.set_zero_negative_flags(self.registers.x);
+    }
+
+    /// ## LDY (Load Index Y with Memory)
+    ///
+    /// Load Index Y with Memory
+    ///
+    /// `M -> Y`, Flags affected: `N` `Z`
+    fn ldy(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        self.registers.y = data;
+        self.registers.set_zero_negative_flags(self.registers.y);
     }
 }
 
@@ -1222,6 +1285,63 @@ mod tests {
 
             assert_eq!(cpu.registers.pc, 0x8006);
             assert_eq!(cpu.registers.x, 0x00);
+        }
+
+        #[test]
+        fn jsr() {}
+
+        #[test]
+        fn lda() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x00, 0x01);
+            cpu.load(&[
+                0xA5, 0x00, // LDA
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn ldx() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x00, 0x01);
+            cpu.load(&[
+                0xA6, 0x00, // LDX
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.x, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn ldy() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.memory.write(0x00, 0x01);
+            cpu.load(&[
+                0xA4, 0x00, // LDY
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.y, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8003);
         }
     }
 }
