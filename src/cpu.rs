@@ -29,7 +29,7 @@ where
 
 impl<T> Cpu<T>
 where
-    T: MemoryBus<Data = u8, Addr = u16>,
+    T: MemoryBus<Data = u8, Addr = u16> + Default,
 {
     pub fn new(memory: T) -> Cpu<T> {
         Cpu {
@@ -42,7 +42,8 @@ where
         self.registers = Registers {
             pc: 0x8000,
             ..Registers::default()
-        }
+        };
+        self.memory = T::default();
     }
 
     pub fn load(&mut self, program: &[T::Data]) {
