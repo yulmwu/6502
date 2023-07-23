@@ -119,6 +119,10 @@ pub fn memory_hexdump(memory: &Memory, start: u16, end: u16) -> String {
         let mut line = format!("[0x{:04X}] ", addr);
 
         for i in 0..16 {
+            if addr + i > u16::MAX - 1 {
+                line.push_str("   ");
+                break;
+            }
             let data = memory.read(addr + i);
             line.push_str(&format!("{:02X} ", data));
         }
@@ -126,6 +130,10 @@ pub fn memory_hexdump(memory: &Memory, start: u16, end: u16) -> String {
         line.push_str("| ");
 
         for i in 0..16 {
+            if addr + i > u16::MAX - 1 {
+                line.push(' ');
+                break;
+            }
             let data = memory.read(addr + i);
             if data.is_ascii_control() {
                 line.push('.');
