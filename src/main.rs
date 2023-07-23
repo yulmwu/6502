@@ -1,6 +1,6 @@
 use emulator::{
     cpu::Cpu,
-    memory::{memory_hexdump, Memory, MemoryBus},
+    memory::{memory_hexdump, Memory},
 };
 
 fn main() {
@@ -18,4 +18,5 @@ fn main() {
     cpu.execute();
 
     println!("PC: {:04X}, X: {:02X}", cpu.registers.pc, cpu.registers.x);
+    println!("{}", memory_hexdump(&cpu.memory, 0x0000, 0xFFFF));
 }
