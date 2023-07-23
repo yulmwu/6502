@@ -52,7 +52,6 @@ where
     pub fn execute(&mut self) {
         loop {
             let opcode = self.memory.read(self.registers.pc);
-            println!("PC: {:04X} OP: {:02X}", self.registers.pc, opcode);
             self.registers.pc += 1;
 
             match opcode {
@@ -178,6 +177,25 @@ where
                 0xB4 => self.ldy(AddressingMode::ZeroPageX),
                 0xAC => self.ldy(AddressingMode::Absolute),
                 0xBC => self.ldy(AddressingMode::AbsoluteX),
+
+                // STA
+                0x85 => self.sta(AddressingMode::ZeroPage),
+                0x95 => self.sta(AddressingMode::ZeroPageX),
+                0x8D => self.sta(AddressingMode::Absolute),
+                0x9D => self.sta(AddressingMode::AbsoluteX),
+                0x99 => self.sta(AddressingMode::AbsoluteY),
+                0x81 => self.sta(AddressingMode::IndirectX),
+                0x91 => self.sta(AddressingMode::IndirectY),
+
+                // STX
+                0x86 => self.stx(AddressingMode::ZeroPage),
+                0x96 => self.stx(AddressingMode::ZeroPageY),
+                0x8E => self.stx(AddressingMode::Absolute),
+
+                // STY
+                0x84 => self.sty(AddressingMode::ZeroPage),
+                0x94 => self.sty(AddressingMode::ZeroPageX),
+                0x8C => self.sty(AddressingMode::Absolute),
 
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
@@ -670,6 +688,36 @@ where
         let data = self.get_data_from_addressing_mode(mode);
         self.registers.y = data;
         self.registers.set_zero_negative_flags(self.registers.y);
+    }
+
+    /// ## STA (Store Accumulator in Memory)
+    ///
+    /// Store Accumulator in Memory
+    ///
+    /// `A -> M`, Flags affected: None
+    fn sta(&mut self, mode: AddressingMode) {
+        let address = self.get_address_from_mode(mode);
+        self.memory.write(address, self.registers.a);
+    }
+
+    /// ## STX (Store Index X in Memory)
+    ///
+    /// Store Index X in Memory
+    ///
+    /// `X -> M`, Flags affected: None
+    fn stx(&mut self, mode: AddressingMode) {
+        let address = self.get_address_from_mode(mode);
+        self.memory.write(address, self.registers.x);
+    }
+
+    /// ## STY (Store Index Y in Memory)
+    ///
+    /// Store Index Y in Memory
+    ///
+    /// `Y -> M`, Flags affected: None
+    fn sty(&mut self, mode: AddressingMode) {
+        let address = self.get_address_from_mode(mode);
+        self.memory.write(address, self.registers.y);
     }
 }
 
@@ -1341,6 +1389,54 @@ mod tests {
             assert_eq!(cpu.registers.y, 0x01);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn sta() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x01;
+            cpu.load(&[
+                0x85, 0x00, // STA
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.memory.read(0x00), 0x01);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn stx() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x01;
+            cpu.load(&[
+                0x86, 0x00, // STX
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.memory.read(0x00), 0x01);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn sty() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.y = 0x01;
+            cpu.load(&[
+                0x84, 0x00, // STY
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.memory.read(0x00), 0x01);
             assert_eq!(cpu.registers.pc, 0x8003);
         }
     }
