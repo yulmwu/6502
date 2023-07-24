@@ -8,7 +8,7 @@ use crate::{
     registers::Registers,
 };
 
-#[doc=include_str!("../README.md")]
+#[doc=include_str!("../../README.md")]
 #[derive(Debug, Default)]
 pub struct Cpu<T>
 where
