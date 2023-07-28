@@ -1,13 +1,29 @@
-#[rustfmt::skip]
-#[repr(u8)]
-pub enum Instructions {
+macro_rules! enum_mnemonics {
+    ($($ident:ident),*) => {
+        #[repr(u8)]
+        pub enum Mnemonics {
+            $($ident,)*
+        }
+
+        impl From<&str> for Mnemonics {
+            fn from(s: &str) -> Self {
+                match s {
+                    $(stringify!($ident) => Mnemonics::$ident,)*
+                    _ => panic!("Invalid mnemonic"),
+                }
+            }
+        }
+    };
+}
+
+enum_mnemonics! {
     ADC, AND, ASL, BCC, BCS, BEQ, BIT, BMI,
     BNE, BPL, BRK, BVC, BVS, CLC, CLD, CLI,
     CLV, CMP, CPX, CPY, DEC, DEX, DEY, EOR,
     INC, INX, INY, JMP, JSR, LDA, LDX, LDY,
     LSR, NOP, ORA, PHA, PHP, PLA, PLP, ROL,
     ROR, RTI, RTS, SBC, SEC, SED, SEI, STA,
-    STX, STY, TAX, TAY, TSX, TXA, TXS, TYA,
+    STX, STY, TAX, TAY, TSX, TXA, TXS, TYA
 }
 
 #[rustfmt::skip]
@@ -20,11 +36,27 @@ pub enum AddressingMode {
     REL /* Relative */,
 }
 
-pub fn instruction_to_byte(instruction: Instructions, addressing_mode: AddressingMode) -> u8 {
-    use AddressingMode::*;
-    use Instructions::*;
+pub struct Operand {
+    pub addressing_mode: AddressingMode,
+    pub value: OperandData,
+}
 
-    match (instruction, addressing_mode) {
+pub enum OperandData {
+    Number(NumberType),
+    Label(String),
+}
+
+pub enum NumberType {
+    Decimal(u8),
+    Hexadecimal(u8),
+    Binary(u8),
+}
+
+pub fn instruction_to_byte(mnemonic: Mnemonics, addressing_mode: AddressingMode) -> u8 {
+    use AddressingMode::*;
+    use Mnemonics::*;
+
+    match (mnemonic, addressing_mode) {
         // ADC
         (ADC, IMM) => 0x69,
         (ADC, ZPG) => 0x65,
