@@ -1,22 +1,25 @@
-use emulator::{
-    cpu::Cpu,
-    memory::{memory_hexdump, Memory},
-};
+use emulator::{Parser, TokenKind};
+use logos::Logos;
 
 fn main() {
-    let memory = Memory::default();
-    let mut cpu = Cpu::new(memory);
-    cpu.reset();
-    cpu.registers.x = 0x01;
-    cpu.load(&[
-        /* $8000 */ 0x4C, 0x04, 0x80, // JMP $8004
-        /* $8003 */ 0xE8, // INX
-        /* $8004 */ 0xCA, // DEX
-        /* $8005 */ 0x00,
-    ]);
+    let lexer = TokenKind::lexer(
+        r#"
+LDA #$FF
+LDA $FFFF
+LDA $FFFF,X
+LDA $FFFF,Y
+LDA ($FFFF)
+LDA ($FF, X)
+LDA ($FF), Y
+LDA $FF
+LDA $FF,X
+LDA $FF,Y
+CLC
+"#,
+    );
+    let mut parser = Parser::new(lexer);
 
-    cpu.execute();
+    let p = parser.parse();
 
-    println!("PC: {:04X}, X: {:02X}", cpu.registers.pc, cpu.registers.x);
-    println!("{}", memory_hexdump(&cpu.memory, 0x0000, 0xFFFF));
+    println!("{:#?}", p.0);
 }

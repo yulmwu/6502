@@ -3,5 +3,8 @@ name = "emulator"
 version = "0.1.0"
 edition = "2021"
 
+[lib]
+doctest = false
+
 [dependencies]
 logos = "0.13.0"

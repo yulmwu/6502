@@ -67,10 +67,6 @@ impl<'a> Parser<'a> {
             let instruction = Mnemonics::from(identifier.as_str());
             self.next_token();
             let operand = self.parse_operand();
-            println!(
-                "{:?} {:?} {:?}",
-                instruction, operand.addressing_mode, operand.value
-            );
 
             Statement::Instruction(Instruction {
                 opcode: instruction,
@@ -245,5 +241,126 @@ impl<'a> Parser<'a> {
             }
             _ => panic!("Invalid operand"),
         }
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use crate::{
+        AddressingMode::{self, *},
+        Instruction,
+        Mnemonics::{self, *},
+        NumberType, Operand, OperandData, Parser, Statement,
+    };
+    use logos::Lexer;
+
+    fn test_parse_instruction(input: &str, expected: Instruction) {
+        let lexer = Lexer::new(input);
+        let mut parser = Parser::new(lexer);
+        let instruction = parser.parse().0;
+
+        assert_eq!(instruction[0], Statement::Instruction(expected));
+    }
+
+    fn instruction(
+        mnemonic: Mnemonics,
+        mode: AddressingMode,
+        data: Option<NumberType>,
+    ) -> Instruction {
+        Instruction::new(
+            mnemonic,
+            Operand::new(
+                mode,
+                match data {
+                    Some(data) => Some(OperandData::Number(data)),
+                    None => None,
+                },
+            ),
+        )
+    }
+
+    #[test]
+    fn test_parse_lda_immediate() {
+        test_parse_instruction(
+            "LDA #$FF",
+            instruction(LDA, IMM, Some(NumberType::Hexadecimal8(255))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_absolute() {
+        test_parse_instruction(
+            "LDA $FFFF",
+            instruction(LDA, ABS, Some(NumberType::Hexadecimal16(65535))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_absolute_x() {
+        test_parse_instruction(
+            "LDA $FFFF,X",
+            instruction(LDA, ABX, Some(NumberType::Hexadecimal16(65535))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_absolute_y() {
+        test_parse_instruction(
+            "LDA $FFFF,Y",
+            instruction(LDA, ABY, Some(NumberType::Hexadecimal16(65535))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_indirect() {
+        test_parse_instruction(
+            "LDA ($FFFF)",
+            instruction(LDA, IND, Some(NumberType::Hexadecimal16(65535))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_indirect_x() {
+        test_parse_instruction(
+            "LDA ($FF, X)",
+            instruction(LDA, IDX, Some(NumberType::Hexadecimal8(255))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_indirect_y() {
+        test_parse_instruction(
+            "LDA ($FF), Y",
+            instruction(LDA, IDY, Some(NumberType::Hexadecimal8(255))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_zeropage() {
+        test_parse_instruction(
+            "LDA $FF",
+            instruction(LDA, RELZPG, Some(NumberType::Hexadecimal8(255))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_zeropage_x() {
+        test_parse_instruction(
+            "LDA $FF,X",
+            instruction(LDA, ZPX, Some(NumberType::Hexadecimal8(255))),
+        );
+    }
+
+    #[test]
+    fn test_parse_lda_zeropage_y() {
+        test_parse_instruction(
+            "LDA $FF,Y",
+            instruction(LDA, ZPY, Some(NumberType::Hexadecimal8(255))),
+        );
+    }
+
+    #[test]
+    fn test_parse_clc_implied_accumulator() {
+        test_parse_instruction("CLC", instruction(CLC, IMPACC, None));
     }
 }
