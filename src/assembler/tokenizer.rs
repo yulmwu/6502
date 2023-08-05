@@ -1,11 +1,15 @@
 use logos::{Lexer, Logos};
 
-fn decimal(text: &mut Lexer<TokenKind>) -> Option<u64> {
+fn decimal(text: &mut Lexer<TokenKind>) -> Option<u16> {
     text.slice().parse().ok()
 }
 
-fn hexadecimal(text: &mut Lexer<TokenKind>, slice: usize) -> Option<u64> {
-    u64::from_str_radix(&text.slice()[slice..], 16).ok()
+fn hexadecimal8bit(text: &mut Lexer<TokenKind>, slice: usize) -> Option<u8> {
+    u8::from_str_radix(&text.slice()[slice..], 16).ok()
+}
+
+fn hexadecimal16bit(text: &mut Lexer<TokenKind>, slice: usize) -> Option<u16> {
+    u16::from_str_radix(&text.slice()[slice..], 16).ok()
 }
 
 fn identifier(text: &mut Lexer<TokenKind>) -> Option<String> {
@@ -22,9 +26,13 @@ pub enum TokenKind {
     #[token(":")] Colon,
     #[token("#")] Hash,
     #[token("\n")] Newline,
-    #[regex(r"[1-9][0-9]*", decimal)] Decimal(u64),
-    #[regex(r"0x[0-9a-fA-F]+", |lexer| hexadecimal(lexer, 2))]
-    #[regex(r"\$[0-9a-fA-F]+", |lexer| hexadecimal(lexer, 1))] Hexadecimal(u64),
+    #[token("X")] X,
+    #[token("Y")] Y,
+    #[regex(r"[1-9][0-9]+", decimal)] Decimal(u16),
+    #[regex(r"0x[0-9a-fA-F]{2}", |lexer| hexadecimal8bit(lexer, 2))]
+    #[regex(r"\$[0-9a-fA-F]{2}", |lexer| hexadecimal8bit(lexer, 1))] Hexadecimal8Bit(u8),
+    #[regex(r"0x[0-9a-fA-F]{4}", |lexer| hexadecimal16bit(lexer, 2))]
+    #[regex(r"\$[0-9a-fA-F]{4}", |lexer| hexadecimal16bit(lexer, 1))] Hexadecimal16Bit(u16),
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", identifier)] Identifier(String),
 }
 
@@ -55,10 +63,10 @@ mod tests {
     #[test]
     fn test_tokenizer_hexadecimal() {
         test_tokenizer(
-            "$1234 0x5678",
+            "$1234 0x56",
             &[
-                TokenKind::Hexadecimal(0x1234),
-                TokenKind::Hexadecimal(0x5678),
+                TokenKind::Hexadecimal16Bit(0x1234),
+                TokenKind::Hexadecimal8Bit(0x56),
             ],
         );
     }
