@@ -13,9 +13,9 @@ it has five 8-bit registers (A, X, Y, P, S) and a 16-bit program counter (PC), a
 
 ## TODO
 
-- [ ] Implement instructions
+- [ ] Implement instructions (in progress)
 - [ ] Implement interrupts
-- [ ] Assembler
+- [ ] Assembler (in progress)
 - [ ] Debugger
 
 # References
