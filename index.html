@@ -8,33 +8,33 @@
             import init, { Emulator } from './static/wasm.js'
             init().then(() => {
                 const evaluator = new Emulator()
-                // // console.log(evaluator)
-                // evaluator.load([0x4C, 0x04, 0x80, 0x00]);
-                // // console.log(evaluator.memory_hexdump(0x0000, 0xFFFF))
+
                 const input = document.getElementById('input')
                 const runButton = document.getElementById('run')
                 const output = document.getElementById('output')
                 const memoryDump = document.getElementById('memorydump')
 
-                input.value = '0x18\n0x00\n'
+                input.value = 'LDX #$FF\nSTX $00\n'
 
                 runButton.addEventListener('click', () => {
-                    evaluator.reset()
-                    let input = document
-                        .getElementById('input')
-                        .value.split('\n')
-                        .filter((line) => line.length > 0)
-                        .map((line) => line.split(' '))
-                        .map((line) => line.map((hex) => parseInt(hex, 16)))
-                        .flat()
-                    console.log(input)
-                    evaluator.load(input)
-                    evaluator.execute()
-                    output.value = evaluator.cpu_status()
-                    memoryDump.value = ''
-                    memoryDump.value += evaluator.memory_hexdump(0x0000, 0x10)
-                    memoryDump.value += '\n'
-                    memoryDump.value += evaluator.memory_hexdump(0x8000, 0x8030)
+                    try {
+                        evaluator.reset()
+
+                        let input = document.getElementById('input').value
+                        let assembled = evaluator.assemble(input)
+                        console.log(input, assembled)
+
+                        evaluator.load(assembled)
+                        evaluator.execute()
+
+                        output.value = evaluator.cpu_status()
+                        memoryDump.value = ''
+                        memoryDump.value += evaluator.memory_hexdump(0x0000, 0x10)
+                        memoryDump.value += '\n'
+                        memoryDump.value += evaluator.memory_hexdump(0x8000, 0x8030)
+                    } catch (e) {
+                        output.value = `Error: ${e}`
+                    }
                 })
             })
         </script>

@@ -1,4 +1,5 @@
 use emulator::{
+    assembler,
     cpu::Cpu,
     memory::{memory_hexdump, Memory},
 };
@@ -36,5 +37,9 @@ impl Emulator {
 
     pub fn cpu_status(&self) -> String {
         format!("{}", self.cpu)
+    }
+
+    pub fn assemble(&self, source: &str) -> Vec<u8> {
+        assembler::assemble(source)
     }
 }
