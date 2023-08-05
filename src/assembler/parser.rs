@@ -48,9 +48,16 @@ impl<'a> Parser<'a> {
                 TokenKind::Identifier(identifier) => {
                     let statement = self.parse_identifier(identifier);
                     program.0.push(statement);
+
+                    if self.current_token == Some(TokenKind::Newline) {
+                        self.next_token();
+                    }
+                }
+                TokenKind::Newline => {
+                    self.next_token();
                 }
                 _ => {
-                    self.next_token();
+                    panic!("Unexpected token {:?}", token);
                 }
             }
         }
@@ -314,8 +321,8 @@ mod tests {
     #[test]
     fn test_parse_lda_indirect() {
         test_parse_instruction(
-            "LDA ($FFFF)",
-            instruction(LDA, IND, Some(NumberType::Hexadecimal16(65535))),
+            "JMP ($FFFF)",
+            instruction(JMP, IND, Some(NumberType::Hexadecimal16(65535))),
         );
     }
 
@@ -344,18 +351,18 @@ mod tests {
     }
 
     #[test]
-    fn test_parse_lda_zeropage_x() {
+    fn test_parse_ldx_zeropage_x() {
         test_parse_instruction(
-            "LDA $FF,X",
-            instruction(LDA, ZPX, Some(NumberType::Hexadecimal8(255))),
+            "LDX $FF,Y",
+            instruction(LDX, ZPY, Some(NumberType::Hexadecimal8(255))),
         );
     }
 
     #[test]
-    fn test_parse_lda_zeropage_y() {
+    fn test_parse_ldy_zeropage_y() {
         test_parse_instruction(
-            "LDA $FF,Y",
-            instruction(LDA, ZPY, Some(NumberType::Hexadecimal8(255))),
+            "LDY $FF,X",
+            instruction(LDY, ZPX, Some(NumberType::Hexadecimal8(255))),
         );
     }
 

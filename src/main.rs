@@ -1,25 +1,18 @@
-use emulator::{Parser, TokenKind};
-use logos::Logos;
+use emulator::assemble;
 
 fn main() {
-    let lexer = TokenKind::lexer(
-        r#"
+    let src = r#"
 LDA #$FF
 LDA $FFFF
 LDA $FFFF,X
 LDA $FFFF,Y
-LDA ($FFFF)
+JMP ($FFFF)
 LDA ($FF, X)
 LDA ($FF), Y
 LDA $FF
-LDA $FF,X
-LDA $FF,Y
+LDX $FF,Y
+LDY $FF,X
 CLC
-"#,
-    );
-    let mut parser = Parser::new(lexer);
-
-    let p = parser.parse();
-
-    println!("{:#?}", p.0);
+"#;
+    println!("{:?}", assemble(src));
 }
