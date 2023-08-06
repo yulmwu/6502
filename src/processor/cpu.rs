@@ -765,7 +765,7 @@ where
     ///
     /// `push SR`, Flags affected: None
     fn php(&mut self) {
-        self.stack_push(self.registers.sp);
+        self.stack_push(self.registers.p);
     }
 
     /// ## PLA (Pull Accumulator from Stack)
@@ -784,7 +784,7 @@ where
     ///
     /// `pull SR`, Flags affected: `N` `V` `B` `D` `I` `Z` `C`
     fn plp(&mut self) {
-        self.registers.sp = self.stack_pop();
+        self.registers.p = self.stack_pop();
     }
 
     /// ## STA (Store Accumulator in Memory)
@@ -1539,6 +1539,82 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn pha() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x01;
+            cpu.load(&[
+                0x48, // PHA
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.stack_pop(), 0x01);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn php() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.set_flag_carry(true);
+            cpu.registers.set_flag_zero(true);
+            cpu.registers.set_flag_interrupt_disable(true);
+            cpu.registers.set_flag_decimal(true);
+            cpu.registers.set_flag_break(true);
+            cpu.registers.set_flag_overflow(true);
+            cpu.registers.set_flag_negative(true);
+            cpu.load(&[
+                0x08, // PHP
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.stack_pop(), 0b1101_1111);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn pla() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.stack_push(0x01);
+            cpu.load(&[
+                0x68, // PLA
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0x01);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn plp() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.stack_push(0b1101_1111);
+            cpu.load(&[
+                0x28, // PLP
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_carry(), true);
+            assert_eq!(cpu.registers.get_flag_zero(), true);
+            assert_eq!(cpu.registers.get_flag_interrupt_disable(), true);
+            assert_eq!(cpu.registers.get_flag_decimal(), true);
+            assert_eq!(cpu.registers.get_flag_break(), true);
+            assert_eq!(cpu.registers.get_flag_overflow(), true);
+            assert_eq!(cpu.registers.get_flag_negative(), true);
+            assert_eq!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
