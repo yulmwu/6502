@@ -210,6 +210,13 @@ where
                 0x2E => self.rol(Some(AddressingMode::Absolute)),
                 0x3E => self.rol(Some(AddressingMode::AbsoluteX)),
 
+                // ROR
+                0x6A => self.ror(None),
+                0x66 => self.ror(Some(AddressingMode::ZeroPage)),
+                0x76 => self.ror(Some(AddressingMode::ZeroPageX)),
+                0x6E => self.ror(Some(AddressingMode::Absolute)),
+                0x7E => self.ror(Some(AddressingMode::AbsoluteX)),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -808,6 +815,31 @@ where
         self.registers.set_flag_carry(data & 0x80 == 0x80);
 
         let data = (data << 1) | carry;
+        self.registers.set_zero_negative_flags(data);
+
+        match mode {
+            Some(mode) => {
+                let addr = self.get_address_from_mode(mode);
+                self.memory.write(addr, data);
+            }
+            None => self.registers.a = data,
+        }
+    }
+
+    /// ## ROR (Rotate One Bit Right (Memory or Accumulator))
+    ///
+    /// Rotate One Bit Right (Memory or Accumulator)
+    ///
+    /// `C -> [76543210] -> C`, Flags affected: `N` `Z` `C`
+    fn ror(&mut self, mode: Option<AddressingMode>) {
+        let data = match mode {
+            Some(mode) => self.get_data_from_addressing_mode(mode),
+            None => self.registers.a,
+        };
+        let carry = self.registers.get_flag_carry() as u8;
+        self.registers.set_flag_carry(data & 0x01 == 1);
+
+        let data = (data >> 1) | carry;
         self.registers.set_zero_negative_flags(data);
 
         match mode {
@@ -1663,6 +1695,25 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.a, 21);
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn ror() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 10;
+            cpu.load(&[
+                0x6A, // ROR
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 5);
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
