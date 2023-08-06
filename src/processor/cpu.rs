@@ -186,6 +186,18 @@ where
                 0x4E => self.lsr(Some(AddressingMode::Absolute)),
                 0x5E => self.lsr(Some(AddressingMode::AbsoluteX)),
 
+                /* NOP */ 0xEA => {}
+
+                // ORA
+                0x09 => self.ora(AddressingMode::Immediate),
+                0x05 => self.ora(AddressingMode::ZeroPage),
+                0x15 => self.ora(AddressingMode::ZeroPageX),
+                0x0D => self.ora(AddressingMode::Absolute),
+                0x1D => self.ora(AddressingMode::AbsoluteX),
+                0x19 => self.ora(AddressingMode::AbsoluteY),
+                0x01 => self.ora(AddressingMode::IndirectX),
+                0x11 => self.ora(AddressingMode::IndirectY),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -720,6 +732,17 @@ where
             }
             None => self.registers.a = data,
         }
+    }
+
+    /// ## ORA (OR Memory with Accumulator)
+    /// 
+    /// OR Memory with Accumulator
+    /// 
+    /// `A OR M -> A`, Flags affected: `N` `Z`
+    fn ora(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        self.registers.a |= data;
+        self.registers.set_zero_negative_flags(self.registers.a);
     }
 
     /// ## STA (Store Accumulator in Memory)
@@ -1425,6 +1448,58 @@ mod tests {
         }
 
         #[test]
+        fn lsr() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 10;
+            cpu.load(&[
+                0x4A, // LSR
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 5);
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn nop() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.load(&[
+                0xEA, // NOP
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn ora() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x01;
+            cpu.memory.write(0x00, 0x01);
+            cpu.load(&[
+                0x05, 0x00, // ORA
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
         fn sta() {
             let mut cpu = setup();
             cpu.reset();
@@ -1470,25 +1545,6 @@ mod tests {
 
             assert_eq!(cpu.memory.read(0x00), 0x01);
             assert_eq!(cpu.registers.pc, 0x8003);
-        }
-
-        #[test]
-        fn lsr() {
-            let mut cpu = setup();
-            cpu.reset();
-            cpu.registers.a = 10;
-            cpu.load(&[
-                0x4A, // LSR
-                0x00,
-            ]);
-
-            cpu.execute();
-
-            assert_eq!(cpu.registers.a, 5);
-            assert_eq!(cpu.registers.get_flag_carry(), false);
-            assert_eq!(cpu.registers.get_flag_zero(), false);
-            assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
         }
     }
 }
