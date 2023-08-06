@@ -198,6 +198,11 @@ where
                 0x01 => self.ora(AddressingMode::IndirectX),
                 0x11 => self.ora(AddressingMode::IndirectY),
 
+                /* PHA */ 0x48 => self.pha(),
+                /* PHP */ 0x08 => self.php(),
+                /* PLA */ 0x68 => self.pla(),
+                /* PLP */ 0x28 => self.plp(),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -735,14 +740,51 @@ where
     }
 
     /// ## ORA (OR Memory with Accumulator)
-    /// 
+    ///
     /// OR Memory with Accumulator
-    /// 
+    ///
     /// `A OR M -> A`, Flags affected: `N` `Z`
     fn ora(&mut self, mode: AddressingMode) {
         let data = self.get_data_from_addressing_mode(mode);
         self.registers.a |= data;
         self.registers.set_zero_negative_flags(self.registers.a);
+    }
+
+    /// ## PHA (Push Accumulator on Stack)
+    ///
+    /// Push Accumulator on Stack
+    ///
+    /// `push A`, Flags affected: None
+    fn pha(&mut self) {
+        self.stack_push(self.registers.a);
+    }
+
+    /// ## PHP (Push Processor Status on Stack)
+    ///
+    /// Push Processor Status on Stack
+    ///
+    /// `push SR`, Flags affected: None
+    fn php(&mut self) {
+        self.stack_push(self.registers.sp);
+    }
+
+    /// ## PLA (Pull Accumulator from Stack)
+    ///
+    /// Pull Accumulator from Stack
+    ///
+    /// `pull A`, Flags affected: `N` `Z`
+    fn pla(&mut self) {
+        self.registers.a = self.stack_pop();
+        self.registers.set_zero_negative_flags(self.registers.a);
+    }
+
+    /// ## PLP (Pull Processor Status from Stack)
+    ///
+    /// Pull Processor Status from Stack
+    ///
+    /// `pull SR`, Flags affected: `N` `V` `B` `D` `I` `Z` `C`
+    fn plp(&mut self) {
+        self.registers.sp = self.stack_pop();
     }
 
     /// ## STA (Store Accumulator in Memory)
