@@ -203,6 +203,13 @@ where
                 /* PLA */ 0x68 => self.pla(),
                 /* PLP */ 0x28 => self.plp(),
 
+                // ROL
+                0x2A => self.rol(None),
+                0x26 => self.rol(Some(AddressingMode::ZeroPage)),
+                0x36 => self.rol(Some(AddressingMode::ZeroPageX)),
+                0x2E => self.rol(Some(AddressingMode::Absolute)),
+                0x3E => self.rol(Some(AddressingMode::AbsoluteX)),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -785,6 +792,31 @@ where
     /// `pull SR`, Flags affected: `N` `V` `B` `D` `I` `Z` `C`
     fn plp(&mut self) {
         self.registers.p = self.stack_pop();
+    }
+
+    /// ## ROL (Rotate One Bit Left (Memory or Accumulator))
+    ///
+    /// Rotate One Bit Left (Memory or Accumulator)
+    ///
+    /// `C <- [76543210] <- C`, Flags affected: `N` `Z` `C`
+    fn rol(&mut self, mode: Option<AddressingMode>) {
+        let data = match mode {
+            Some(mode) => self.get_data_from_addressing_mode(mode),
+            None => self.registers.a,
+        };
+        let carry = self.registers.get_flag_carry() as u8;
+        self.registers.set_flag_carry(data & 0x80 == 0x80);
+
+        let data = (data << 1) | carry;
+        self.registers.set_zero_negative_flags(data);
+
+        match mode {
+            Some(mode) => {
+                let addr = self.get_address_from_mode(mode);
+                self.memory.write(addr, data);
+            }
+            None => self.registers.a = data,
+        }
     }
 
     /// ## STA (Store Accumulator in Memory)
@@ -1614,6 +1646,26 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_break(), true);
             assert_eq!(cpu.registers.get_flag_overflow(), true);
             assert_eq!(cpu.registers.get_flag_negative(), true);
+            assert_eq!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn rol() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 10;
+            cpu.registers.set_flag_carry(true);
+            cpu.load(&[
+                0x2A, // ROL
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 21);
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq!(cpu.registers.pc, 0x8002);
         }
 
