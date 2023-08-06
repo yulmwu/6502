@@ -179,6 +179,13 @@ where
                 0xAC => self.ldy(AddressingMode::Absolute),
                 0xBC => self.ldy(AddressingMode::AbsoluteX),
 
+                // LSR
+                0x4A => self.lsr(None),
+                0x46 => self.lsr(Some(AddressingMode::ZeroPage)),
+                0x56 => self.lsr(Some(AddressingMode::ZeroPageX)),
+                0x4E => self.lsr(Some(AddressingMode::Absolute)),
+                0x5E => self.lsr(Some(AddressingMode::AbsoluteX)),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -689,6 +696,30 @@ where
         let data = self.get_data_from_addressing_mode(mode);
         self.registers.y = data;
         self.registers.set_zero_negative_flags(self.registers.y);
+    }
+
+    /// ## LSR (Shift One Bit Right (Memory or Accumulator))
+    ///
+    /// Shift One Bit Right (Memory or Accumulator)
+    ///
+    /// `0 -> [76543210] -> C`, Flags affected: `N` `Z` `C`
+    fn lsr(&mut self, mode: Option<AddressingMode>) {
+        let data = match mode {
+            Some(mode) => self.get_data_from_addressing_mode(mode),
+            None => self.registers.a,
+        };
+        self.registers.set_flag_carry(data & 0x01 == 1);
+
+        let data = data >> 1;
+        self.registers.set_zero_negative_flags(data);
+
+        match mode {
+            Some(mode) => {
+                let addr = self.get_address_from_mode(mode);
+                self.memory.write(addr, data);
+            }
+            None => self.registers.a = data,
+        }
     }
 
     /// ## STA (Store Accumulator in Memory)
@@ -1439,6 +1470,25 @@ mod tests {
 
             assert_eq!(cpu.memory.read(0x00), 0x01);
             assert_eq!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn lsr() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 10;
+            cpu.load(&[
+                0x4A, // LSR
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 5);
+            assert_eq!(cpu.registers.get_flag_carry(), false);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq!(cpu.registers.pc, 0x8002);
         }
     }
 }
