@@ -1306,6 +1306,7 @@ mod tests {
         }
 
         #[test]
+        #[ignore]
         fn bit() {}
 
         #[test]
