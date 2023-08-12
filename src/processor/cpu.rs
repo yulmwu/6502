@@ -153,7 +153,7 @@ where
                 0x4C => self.jmp(AddressingMode::Absolute),
                 0x6C => self.jmp(AddressingMode::Indirect),
 
-                /* JSR */ 0x20 => self.jsr(AddressingMode::Absolute),
+                /* JSR */ 0x20 => self.jsr(),
 
                 // LDA
                 0xA9 => self.lda(AddressingMode::Immediate),
@@ -716,8 +716,14 @@ where
         self.registers.pc = address;
     }
 
-    fn jsr(&mut self, _: AddressingMode) {
-        todo!()
+    /// ## JSR (Jump to New Location Saving Return Address)
+    ///
+    /// Jump to New Location Saving Return Address
+    ///
+    /// `push (PC + 2), PC -> E`, Flags affected: None
+    fn jsr(&mut self) {
+        self.stack_push_addr(self.registers.pc + 1); // PC + 2
+        self.registers.pc = self.get_address_from_mode(AddressingMode::Absolute);
     }
 
     /// ## LDA (Load Accumulator with Memory)
@@ -1643,7 +1649,24 @@ mod tests {
         }
 
         #[test]
-        fn jsr() {}
+        fn jsr() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x01;
+            cpu.load(&[
+                /* $8000 */ 0x20, 0x04, 0x80, // JSR $8004
+                /* $8003 */ 0xE8, // INX
+                /* $8004 */ 0xCA, // DEX
+                /* $8005 */ 0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq_hex!(cpu.registers.pc, 0x8006);
+            assert_eq!(cpu.registers.x, 0x00);
+            assert_eq!(cpu.stack_pop(), 0x02);
+            assert_eq!(cpu.stack_pop(), 0x80);
+        }
 
         #[test]
         fn lda() {
