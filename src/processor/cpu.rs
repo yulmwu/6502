@@ -220,6 +220,16 @@ where
                 /* RTI */ 0x40 => self.rti(),
                 /* RTS */ 0x60 => self.rts(),
 
+                // SBC
+                0xE9 => self.sbc(AddressingMode::Immediate),
+                0xE5 => self.sbc(AddressingMode::ZeroPage),
+                0xF5 => self.sbc(AddressingMode::ZeroPageX),
+                0xED => self.sbc(AddressingMode::Absolute),
+                0xFD => self.sbc(AddressingMode::AbsoluteX),
+                0xF9 => self.sbc(AddressingMode::AbsoluteY),
+                0xE1 => self.sbc(AddressingMode::IndirectX),
+                0xF1 => self.sbc(AddressingMode::IndirectY),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -865,12 +875,23 @@ where
     }
 
     /// ## RTS (Return from Subroutine)
-    /// 
+    ///
     /// Return from Subroutine
-    /// 
+    ///
     /// `pull PC, PC+1 -> PC`, Flags affected: None
     fn rts(&mut self) {
         self.registers.pc = self.stack_pop_addr() + 1;
+    }
+
+    /// ## SBC (Subtract Memory from Accumulator with Borrow)
+    ///
+    /// Subtract Memory from Accumulator with Borrow
+    ///
+    /// `A - M - C -> A`, Flags affected: `N` `V` `Z` `C`
+    fn sbc(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+
+        self.add_to_accumulator_with_carry(!data - 1);
     }
 
     /// ## STA (Store Accumulator in Memory)
@@ -1772,12 +1793,32 @@ mod tests {
             cpu.stack_push_addr(0x8001);
             cpu.load(&[
                 0x60, // RTS
-                0xEA,
+                0xEA, 0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn sbc() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x08;
+            cpu.registers.set_flag_carry(true);
+            cpu.load(&[
+                0xE9, 0x04, // SBC
                 0x00,
             ]);
 
             cpu.execute();
 
+            assert_eq!(cpu.registers.a, 0x03);
+            assert_eq!(cpu.registers.get_flag_carry(), true);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_overflow(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
