@@ -253,6 +253,13 @@ where
                 0x94 => self.sty(AddressingMode::ZeroPageX),
                 0x8C => self.sty(AddressingMode::Absolute),
 
+                /* TAX */ 0xAA => self.tax(),
+                /* TAY */ 0xA8 => self.tay(),
+                /* TSX */ 0xBA => self.tsx(),
+                /* TXA */ 0x8A => self.txa(),
+                /* TXS */ 0x9A => self.txs(),
+                /* TYA */ 0x98 => self.tya(),
+
                 /* BRK */ 0x00 => break,
                 _ => todo!("opcode {:02X} not implemented", opcode),
             }
@@ -953,6 +960,65 @@ where
     fn sty(&mut self, mode: AddressingMode) {
         let address = self.get_address_from_mode(mode);
         self.memory.write(address, self.registers.y);
+    }
+
+    /// ## TAX (Transfer Accumulator to Index X)
+    ///
+    /// Transfer Accumulator to Index X
+    ///
+    /// `A -> X`, Flags affected: `N` `Z`
+    fn tax(&mut self) {
+        self.registers.x = self.registers.a;
+        self.registers.set_zero_negative_flags(self.registers.x);
+    }
+
+    /// ## TAY (Transfer Accumulator to Index Y)
+    ///
+    /// Transfer Accumulator to Index Y
+    ///
+    /// `X -> A`, Flags affected: `N` `Z`
+    fn tay(&mut self) {
+        self.registers.y = self.registers.a;
+        self.registers.set_zero_negative_flags(self.registers.y);
+    }
+
+    /// ## TSX (Transfer Stack Pointer to Index X)
+    ///
+    /// Transfer Stack Pointer to Index X
+    ///
+    /// `SP -> X`, Flags affected: `N` `Z`
+    fn tsx(&mut self) {
+        self.registers.x = self.registers.sp;
+        self.registers.set_zero_negative_flags(self.registers.x);
+    }
+
+    /// ## TXA (Transfer Index X to Accumulator)
+    ///
+    /// Transfer Index X to Accumulator
+    ///
+    /// `X -> A`, Flags affected: `N` `Z`
+    fn txa(&mut self) {
+        self.registers.a = self.registers.x;
+        self.registers.set_zero_negative_flags(self.registers.a);
+    }
+
+    /// ## TXS (Transfer Index X to Stack Register)
+    ///
+    /// Transfer Index X to Stack Register
+    ///
+    /// `X -> SP`, Flags affected: None
+    fn txs(&mut self) {
+        self.registers.sp = self.registers.x;
+    }
+
+    /// ## TYA (Transfer Index Y to Accumulator)
+    ///
+    /// Transfer Index Y to Accumulator
+    ///
+    /// `Y -> A`, Flags affected: `N` `Z`
+    fn tya(&mut self) {
+        self.registers.a = self.registers.y;
+        self.registers.set_zero_negative_flags(self.registers.a);
     }
 }
 
@@ -1944,6 +2010,112 @@ mod tests {
 
             assert_eq!(cpu.memory.read(0x00), 0x01);
             assert_eq_hex!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn tax() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x01;
+            cpu.load(&[
+                0xAA, // TAX
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.x, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn tay() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 0x01;
+            cpu.load(&[
+                0xA8, // TAY
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.y, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn tsx() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.sp = 0x01;
+            cpu.load(&[
+                0xBA, // TSX
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.x, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn txa() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x01;
+            cpu.load(&[
+                0x8A, // TXA
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn txs() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.x = 0x01;
+            cpu.load(&[
+                0x9A, // TXS
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.sp, 0x01);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn tya() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.y = 0x01;
+            cpu.load(&[
+                0x98, // TYA
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.a, 0x01);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), false);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
     }
 }
