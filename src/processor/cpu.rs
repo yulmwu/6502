@@ -217,6 +217,8 @@ where
                 0x6E => self.ror(Some(AddressingMode::Absolute)),
                 0x7E => self.ror(Some(AddressingMode::AbsoluteX)),
 
+                /* RTI */ 0x40 => self.rti(),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -851,6 +853,16 @@ where
         }
     }
 
+    /// ## RTI (Return from Interrupt)
+    ///
+    /// Return from Interrupt
+    ///
+    /// `pull SR, pull PC`, Flags affected: `N` `V` `B` `D` `I` `Z` `C`
+    fn rti(&mut self) {
+        self.registers.p = self.stack_pop();
+        self.registers.pc = self.stack_pop_addr();
+    }
+
     /// ## STA (Store Accumulator in Memory)
     ///
     /// Store Accumulator in Memory
@@ -886,6 +898,12 @@ where
 mod tests {
     use super::*;
     use crate::memory::Memory;
+
+    macro_rules! assert_eq_hex {
+        ($left:expr, $right:expr) => {
+            assert_eq!($left, $right, "{:#X} != {:#X}", $left, $right);
+        };
+    }
 
     fn setup() -> Cpu<Memory> {
         Cpu::default()
@@ -935,7 +953,7 @@ mod tests {
             cpu.memory.write(0x8000, 0x01);
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::Immediate), 0x8000);
-            assert_eq!(cpu.registers.pc, 0x8001);
+            assert_eq_hex!(cpu.registers.pc, 0x8001);
         }
 
         #[test]
@@ -946,7 +964,7 @@ mod tests {
             cpu.memory.write(0x8001, 0x02);
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::Absolute), 0x0201);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -958,7 +976,7 @@ mod tests {
             cpu.registers.x = 0x03;
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::AbsoluteX), 0x0204);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -970,7 +988,7 @@ mod tests {
             cpu.registers.y = 0x03;
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::AbsoluteY), 0x0204);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -983,7 +1001,7 @@ mod tests {
             cpu.memory.write(0x0202, 0x04);
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::Indirect), 0x0403);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -997,7 +1015,7 @@ mod tests {
             cpu.registers.x = 0x03;
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectX), 0x0403);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1011,7 +1029,7 @@ mod tests {
             cpu.registers.y = 0x02;
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::IndirectY), 0x0405);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1021,7 +1039,7 @@ mod tests {
             cpu.memory.write(0x8000, 0x01);
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPage), 0x01);
-            assert_eq!(cpu.registers.pc, 0x8001);
+            assert_eq_hex!(cpu.registers.pc, 0x8001);
         }
 
         #[test]
@@ -1032,7 +1050,7 @@ mod tests {
             cpu.registers.x = 0x03;
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPageX), 0x04);
-            assert_eq!(cpu.registers.pc, 0x8001);
+            assert_eq_hex!(cpu.registers.pc, 0x8001);
         }
 
         #[test]
@@ -1043,7 +1061,7 @@ mod tests {
             cpu.registers.y = 0x03;
 
             assert_eq!(cpu.get_address_from_mode(AddressingMode::ZeroPageY), 0x04);
-            assert_eq!(cpu.registers.pc, 0x8001);
+            assert_eq_hex!(cpu.registers.pc, 0x8001);
         }
     }
 
@@ -1064,7 +1082,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.a, 0x80);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_overflow(), true);
@@ -1084,7 +1102,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.a, 0x00);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
             assert_eq!(cpu.registers.get_flag_zero(), true);
             assert_eq!(cpu.registers.get_flag_negative(), false);
         }
@@ -1102,7 +1120,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.a, 0xF0); // 1111 0000
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), true);
@@ -1120,7 +1138,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1135,7 +1153,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1150,7 +1168,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1168,7 +1186,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1183,7 +1201,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1198,7 +1216,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1216,7 +1234,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1231,7 +1249,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8005);
+            assert_eq_hex!(cpu.registers.pc, 0x8005);
         }
 
         #[test]
@@ -1247,7 +1265,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.get_flag_carry(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1263,7 +1281,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.get_flag_decimal(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1279,7 +1297,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.get_flag_interrupt_disable(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1295,7 +1313,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.get_flag_overflow(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1313,7 +1331,7 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), true);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1331,7 +1349,7 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), true);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1349,7 +1367,7 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), true);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1367,7 +1385,7 @@ mod tests {
             assert_eq!(cpu.memory.read(0x00), 0x00);
             assert_eq!(cpu.registers.get_flag_zero(), true);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1385,7 +1403,7 @@ mod tests {
             assert_eq!(cpu.registers.x, 0x00);
             assert_eq!(cpu.registers.get_flag_zero(), true);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1403,7 +1421,7 @@ mod tests {
             assert_eq!(cpu.registers.y, 0x00);
             assert_eq!(cpu.registers.get_flag_zero(), true);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1419,7 +1437,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.a, 0x7F); // 0111 1111
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
         }
@@ -1439,7 +1457,7 @@ mod tests {
             assert_eq!(cpu.memory.read(0x00), 0x02);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1457,7 +1475,7 @@ mod tests {
             assert_eq!(cpu.registers.x, 0x02);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1475,7 +1493,7 @@ mod tests {
             assert_eq!(cpu.registers.y, 0x02);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1492,7 +1510,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8006);
+            assert_eq_hex!(cpu.registers.pc, 0x8006);
             assert_eq!(cpu.registers.x, 0x00);
         }
 
@@ -1514,7 +1532,7 @@ mod tests {
             assert_eq!(cpu.registers.a, 0x01);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1532,7 +1550,7 @@ mod tests {
             assert_eq!(cpu.registers.x, 0x01);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1550,7 +1568,7 @@ mod tests {
             assert_eq!(cpu.registers.y, 0x01);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1569,7 +1587,7 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1583,7 +1601,7 @@ mod tests {
 
             cpu.execute();
 
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1602,7 +1620,7 @@ mod tests {
             assert_eq!(cpu.registers.a, 0x01);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1618,7 +1636,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.stack_pop(), 0x01);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1640,7 +1658,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.stack_pop(), 0b1101_1111);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1656,7 +1674,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.registers.a, 0x01);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1678,7 +1696,7 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_break(), true);
             assert_eq!(cpu.registers.get_flag_overflow(), true);
             assert_eq!(cpu.registers.get_flag_negative(), true);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1698,7 +1716,7 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
@@ -1717,7 +1735,24 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_carry(), false);
             assert_eq!(cpu.registers.get_flag_zero(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
-            assert_eq!(cpu.registers.pc, 0x8002);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn rti() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.stack_push_addr(0x8001);
+            cpu.stack_push(0b1101_1111);
+            cpu.load(&[
+                0x40, // RTI
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+            assert_eq!(cpu.registers.p, 0b1101_1111);
         }
 
         #[test]
@@ -1733,7 +1768,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.memory.read(0x00), 0x01);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1749,7 +1784,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.memory.read(0x00), 0x01);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
@@ -1765,7 +1800,7 @@ mod tests {
             cpu.execute();
 
             assert_eq!(cpu.memory.read(0x00), 0x01);
-            assert_eq!(cpu.registers.pc, 0x8003);
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
     }
 }
