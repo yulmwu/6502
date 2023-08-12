@@ -218,6 +218,7 @@ where
                 0x7E => self.ror(Some(AddressingMode::AbsoluteX)),
 
                 /* RTI */ 0x40 => self.rti(),
+                /* RTS */ 0x60 => self.rts(),
 
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
@@ -861,6 +862,15 @@ where
     fn rti(&mut self) {
         self.registers.p = self.stack_pop();
         self.registers.pc = self.stack_pop_addr();
+    }
+
+    /// ## RTS (Return from Subroutine)
+    /// 
+    /// Return from Subroutine
+    /// 
+    /// `pull PC, PC+1 -> PC`, Flags affected: None
+    fn rts(&mut self) {
+        self.registers.pc = self.stack_pop_addr() + 1;
     }
 
     /// ## STA (Store Accumulator in Memory)
@@ -1753,6 +1763,22 @@ mod tests {
 
             assert_eq_hex!(cpu.registers.pc, 0x8002);
             assert_eq!(cpu.registers.p, 0b1101_1111);
+        }
+
+        #[test]
+        fn rts() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.stack_push_addr(0x8001);
+            cpu.load(&[
+                0x60, // RTS
+                0xEA,
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
         }
 
         #[test]
