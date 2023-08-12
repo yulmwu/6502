@@ -230,6 +230,10 @@ where
                 0xE1 => self.sbc(AddressingMode::IndirectX),
                 0xF1 => self.sbc(AddressingMode::IndirectY),
 
+                /* SEC */ 0x38 => self.sec(),
+                /* SED */ 0xF8 => self.sed(),
+                /* SEI */ 0x78 => self.sei(),
+
                 // STA
                 0x85 => self.sta(AddressingMode::ZeroPage),
                 0x95 => self.sta(AddressingMode::ZeroPageX),
@@ -892,6 +896,33 @@ where
         let data = self.get_data_from_addressing_mode(mode);
 
         self.add_to_accumulator_with_carry(!data - 1);
+    }
+
+    /// ## SEC (Set Carry Flag)
+    ///
+    /// Set Carry Flag
+    ///
+    /// `1 -> C`, Flags affected: `C`
+    fn sec(&mut self) {
+        self.registers.set_flag_carry(true);
+    }
+
+    /// ## SED (Set Decimal Flag)
+    ///
+    /// Set Decimal Flag
+    ///
+    /// `1 -> D`, Flags affected: `D`
+    fn sed(&mut self) {
+        self.registers.set_flag_decimal(true);
+    }
+
+    /// ## SEI (Set Interrupt Disable)
+    ///
+    /// Set Interrupt Disable
+    ///
+    /// `1 -> I`, Flags affected: `I`
+    fn sei(&mut self) {
+        self.registers.set_flag_interrupt_disable(true);
     }
 
     /// ## STA (Store Accumulator in Memory)
@@ -1820,6 +1851,51 @@ mod tests {
             assert_eq!(cpu.registers.get_flag_overflow(), false);
             assert_eq!(cpu.registers.get_flag_negative(), false);
             assert_eq_hex!(cpu.registers.pc, 0x8003);
+        }
+
+        #[test]
+        fn sec() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.load(&[
+                0x38, // SEC
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_carry(), true);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn sed() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.load(&[
+                0xF8, // SED
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_decimal(), true);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
+        }
+
+        #[test]
+        fn sei() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.load(&[
+                0x78, // SEI
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq!(cpu.registers.get_flag_interrupt_disable(), true);
+            assert_eq_hex!(cpu.registers.pc, 0x8002);
         }
 
         #[test]
