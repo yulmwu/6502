@@ -145,6 +145,11 @@ impl<'a> Parser<'a> {
                     self.parse_8bit_operand_comma(operand_data)
                 }
             }
+            Some(TokenKind::Identifier(identifier)) => {
+                self.next_token();
+                let operand_data = OperandData::Label(identifier);
+                Operand::new(AddressingMode::RELZPG, Some(operand_data))
+            }
             None | Some(TokenKind::Newline) => Operand::new(AddressingMode::IMPACC, None),
             _ => panic!("Invalid operand"),
         }
