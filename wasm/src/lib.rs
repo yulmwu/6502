@@ -1,7 +1,7 @@
 use emulator::{
-    assembler,
     cpu::Cpu,
     memory::{memory_hexdump, Memory},
+    Assembler,
 };
 use wasm_bindgen::prelude::*;
 
@@ -40,6 +40,6 @@ impl Emulator {
     }
 
     pub fn assemble(&self, source: &str) -> Vec<u8> {
-        assembler::assemble(source)
+        Assembler::new(source.to_string()).assemble()
     }
 }
