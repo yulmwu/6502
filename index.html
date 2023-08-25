@@ -14,7 +14,19 @@
                 const output = document.getElementById('output')
                 const memoryDump = document.getElementById('memorydump')
 
-                input.value = 'LDX #$FF\nSTX $00\n'
+                input.value = `
+LDA #$02
+CMP #$01
+BNE FOO
+LDA #$01
+STA $00
+BRK
+
+FOO:
+    LDA #$01
+    STA $01
+    BRK
+                `.trim()
 
                 runButton.addEventListener('click', () => {
                     try {
