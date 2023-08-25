@@ -141,6 +141,11 @@ export class Emulator {
         wasm.emulator_execute(this.__wbg_ptr);
     }
     /**
+    */
+    step() {
+        wasm.emulator_step(this.__wbg_ptr);
+    }
+    /**
     * @param {number} start
     * @param {number} end
     * @returns {string}

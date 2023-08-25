@@ -3,64 +3,23 @@
     <head>
         <meta charset="UTF-8" />
         <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-        <title>Document</title>
-        <script type="module">
-            import init, { Emulator } from './static/wasm.js'
-            init().then(() => {
-                const evaluator = new Emulator()
-
-                const input = document.getElementById('input')
-                const runButton = document.getElementById('run')
-                const output = document.getElementById('output')
-                const memoryDump = document.getElementById('memorydump')
-
-                input.value = `
-LDA #$02
-CMP #$01
-BNE FOO
-LDA #$01
-STA $00
-BRK
-
-FOO:
-    LDA #$01
-    STA $01
-    BRK
-                `.trim()
-
-                runButton.addEventListener('click', () => {
-                    try {
-                        evaluator.reset()
-
-                        let input = document.getElementById('input').value
-                        let assembled = evaluator.assemble(input)
-                        console.log(input, assembled)
-
-                        evaluator.load(assembled)
-                        evaluator.execute()
-
-                        output.value = evaluator.cpu_status()
-                        memoryDump.value = ''
-                        memoryDump.value += evaluator.memory_hexdump(0x0000, 0x10)
-                        memoryDump.value += '\n'
-                        memoryDump.value += evaluator.memory_hexdump(0x8000, 0x8030)
-                    } catch (e) {
-                        output.value = `Error: ${e}`
-                    }
-                })
-            })
-        </script>
+        <title>6502 Emulator</title>
+        <script type="module" src="index.js"></script>
     </head>
     <body>
         <h1>6502 Emulator</h1>
+        <div>
+            <button id="load">Load</button>
+            <button id="run">Run</button>
+            <button id="step">Step</button>
+            <button id="reset">Reset</button>
+        </div>
         <textarea id="input" cols="80" rows="15"></textarea>
-        <button id="run">Run</button>
         <div>
             <h2>Output</h2>
             <textarea id="output" cols="80" rows="3"></textarea>
             <h4>Memory Dump</h4>
             <textarea id="memorydump" cols="80" rows="10"></textarea>
         </div>
-        <script></script>
     </body>
 </html>

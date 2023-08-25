@@ -31,6 +31,10 @@ impl Emulator {
         self.cpu.execute();
     }
 
+    pub fn step(&mut self) {
+        self.cpu.step();
+    }
+
     pub fn memory_hexdump(&self, start: u16, end: u16) -> String {
         memory_hexdump(&self.cpu.memory, start, end)
     }
