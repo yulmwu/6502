@@ -50,219 +50,232 @@ where
         self.memory.rom(program);
     }
 
+    /// returns number of cycles
     pub fn execute(&mut self) {
         loop {
             let opcode = self.memory.read(self.registers.pc);
-            self.registers.pc += 1;
+            self.execute_instruction(opcode);
 
-            match opcode {
-                // ADC
-                0x69 => self.adc(AddressingMode::Immediate),
-                0x65 => self.adc(AddressingMode::ZeroPage),
-                0x75 => self.adc(AddressingMode::ZeroPageX),
-                0x6D => self.adc(AddressingMode::Absolute),
-                0x7D => self.adc(AddressingMode::AbsoluteX),
-                0x79 => self.adc(AddressingMode::AbsoluteY),
-                0x61 => self.adc(AddressingMode::IndirectX),
-                0x71 => self.adc(AddressingMode::IndirectY),
-
-                // AND
-                0x29 => self.and(AddressingMode::Immediate),
-                0x25 => self.and(AddressingMode::ZeroPage),
-                0x35 => self.and(AddressingMode::ZeroPageX),
-                0x2D => self.and(AddressingMode::Absolute),
-                0x3D => self.and(AddressingMode::AbsoluteX),
-                0x39 => self.and(AddressingMode::AbsoluteY),
-                0x21 => self.and(AddressingMode::IndirectX),
-                0x31 => self.and(AddressingMode::IndirectY),
-
-                // ASL
-                0x0A => self.asl(None), // Accumulator
-                0x06 => self.asl(Some(AddressingMode::ZeroPage)),
-                0x16 => self.asl(Some(AddressingMode::ZeroPageX)),
-                0x0E => self.asl(Some(AddressingMode::Absolute)),
-                0x1E => self.asl(Some(AddressingMode::AbsoluteX)),
-
-                /* BCC */ 0x90 => self.bcc(),
-                /* BCS */ 0xB0 => self.bcs(),
-                /* BEQ */ 0xF0 => self.beq(),
-
-                // BIT
-                0x24 => self.bit(AddressingMode::ZeroPage),
-                0x2C => self.bit(AddressingMode::Absolute),
-
-                /* BMI */ 0x30 => self.bmi(),
-                /* BNE */ 0xD0 => self.bne(),
-                /* BPL */ 0x10 => self.bpl(),
-                /* BVC */ 0x50 => self.bvc(),
-                /* BVS */ 0x70 => self.bvs(),
-                /* CLC */ 0x18 => self.clc(),
-                /* CLD */ 0xD8 => self.cld(),
-                /* CLI */ 0x58 => self.cli(),
-                /* CLV */ 0xB8 => self.clv(),
-
-                // CMP
-                0xC9 => self.cmp(AddressingMode::Immediate),
-                0xC5 => self.cmp(AddressingMode::ZeroPage),
-                0xD5 => self.cmp(AddressingMode::ZeroPageX),
-                0xCD => self.cmp(AddressingMode::Absolute),
-                0xDD => self.cmp(AddressingMode::AbsoluteX),
-                0xD9 => self.cmp(AddressingMode::AbsoluteY),
-                0xC1 => self.cmp(AddressingMode::IndirectX),
-                0xD1 => self.cmp(AddressingMode::IndirectY),
-
-                // CPX
-                0xE0 => self.cpx(AddressingMode::Immediate),
-                0xE4 => self.cpx(AddressingMode::ZeroPage),
-                0xEC => self.cpx(AddressingMode::Absolute),
-
-                // CPY
-                0xC0 => self.cpy(AddressingMode::Immediate),
-                0xC4 => self.cpy(AddressingMode::ZeroPage),
-                0xCC => self.cpy(AddressingMode::Absolute),
-
-                // DEC
-                0xC6 => self.dec(AddressingMode::ZeroPage),
-                0xD6 => self.dec(AddressingMode::ZeroPageX),
-                0xCE => self.dec(AddressingMode::Absolute),
-                0xDE => self.dec(AddressingMode::AbsoluteX),
-
-                /* DEX */ 0xCA => self.dex(),
-                /* DEY */ 0x88 => self.dey(),
-
-                // EOR
-                0x49 => self.eor(AddressingMode::Immediate),
-                0x45 => self.eor(AddressingMode::ZeroPage),
-                0x55 => self.eor(AddressingMode::ZeroPageX),
-                0x4D => self.eor(AddressingMode::Absolute),
-                0x5D => self.eor(AddressingMode::AbsoluteX),
-                0x59 => self.eor(AddressingMode::AbsoluteY),
-                0x41 => self.eor(AddressingMode::IndirectX),
-                0x51 => self.eor(AddressingMode::IndirectY),
-
-                // INC
-                0xE6 => self.inc(AddressingMode::ZeroPage),
-                0xF6 => self.inc(AddressingMode::ZeroPageX),
-                0xEE => self.inc(AddressingMode::Absolute),
-                0xFE => self.inc(AddressingMode::AbsoluteX),
-
-                /* INX */ 0xE8 => self.inx(),
-                /* INY */ 0xC8 => self.iny(),
-
-                // JMP
-                0x4C => self.jmp(AddressingMode::Absolute),
-                0x6C => self.jmp(AddressingMode::Indirect),
-
-                /* JSR */ 0x20 => self.jsr(),
-
-                // LDA
-                0xA9 => self.lda(AddressingMode::Immediate),
-                0xA5 => self.lda(AddressingMode::ZeroPage),
-                0xB5 => self.lda(AddressingMode::ZeroPageX),
-                0xAD => self.lda(AddressingMode::Absolute),
-                0xBD => self.lda(AddressingMode::AbsoluteX),
-                0xB9 => self.lda(AddressingMode::AbsoluteY),
-                0xA1 => self.lda(AddressingMode::IndirectX),
-                0xB1 => self.lda(AddressingMode::IndirectY),
-
-                // LDX
-                0xA2 => self.ldx(AddressingMode::Immediate),
-                0xA6 => self.ldx(AddressingMode::ZeroPage),
-                0xB6 => self.ldx(AddressingMode::ZeroPageY),
-                0xAE => self.ldx(AddressingMode::Absolute),
-                0xBE => self.ldx(AddressingMode::AbsoluteY),
-
-                // LDY
-                0xA0 => self.ldy(AddressingMode::Immediate),
-                0xA4 => self.ldy(AddressingMode::ZeroPage),
-                0xB4 => self.ldy(AddressingMode::ZeroPageX),
-                0xAC => self.ldy(AddressingMode::Absolute),
-                0xBC => self.ldy(AddressingMode::AbsoluteX),
-
-                // LSR
-                0x4A => self.lsr(None),
-                0x46 => self.lsr(Some(AddressingMode::ZeroPage)),
-                0x56 => self.lsr(Some(AddressingMode::ZeroPageX)),
-                0x4E => self.lsr(Some(AddressingMode::Absolute)),
-                0x5E => self.lsr(Some(AddressingMode::AbsoluteX)),
-
-                /* NOP */ 0xEA => {}
-
-                // ORA
-                0x09 => self.ora(AddressingMode::Immediate),
-                0x05 => self.ora(AddressingMode::ZeroPage),
-                0x15 => self.ora(AddressingMode::ZeroPageX),
-                0x0D => self.ora(AddressingMode::Absolute),
-                0x1D => self.ora(AddressingMode::AbsoluteX),
-                0x19 => self.ora(AddressingMode::AbsoluteY),
-                0x01 => self.ora(AddressingMode::IndirectX),
-                0x11 => self.ora(AddressingMode::IndirectY),
-
-                /* PHA */ 0x48 => self.pha(),
-                /* PHP */ 0x08 => self.php(),
-                /* PLA */ 0x68 => self.pla(),
-                /* PLP */ 0x28 => self.plp(),
-
-                // ROL
-                0x2A => self.rol(None),
-                0x26 => self.rol(Some(AddressingMode::ZeroPage)),
-                0x36 => self.rol(Some(AddressingMode::ZeroPageX)),
-                0x2E => self.rol(Some(AddressingMode::Absolute)),
-                0x3E => self.rol(Some(AddressingMode::AbsoluteX)),
-
-                // ROR
-                0x6A => self.ror(None),
-                0x66 => self.ror(Some(AddressingMode::ZeroPage)),
-                0x76 => self.ror(Some(AddressingMode::ZeroPageX)),
-                0x6E => self.ror(Some(AddressingMode::Absolute)),
-                0x7E => self.ror(Some(AddressingMode::AbsoluteX)),
-
-                /* RTI */ 0x40 => self.rti(),
-                /* RTS */ 0x60 => self.rts(),
-
-                // SBC
-                0xE9 => self.sbc(AddressingMode::Immediate),
-                0xE5 => self.sbc(AddressingMode::ZeroPage),
-                0xF5 => self.sbc(AddressingMode::ZeroPageX),
-                0xED => self.sbc(AddressingMode::Absolute),
-                0xFD => self.sbc(AddressingMode::AbsoluteX),
-                0xF9 => self.sbc(AddressingMode::AbsoluteY),
-                0xE1 => self.sbc(AddressingMode::IndirectX),
-                0xF1 => self.sbc(AddressingMode::IndirectY),
-
-                /* SEC */ 0x38 => self.sec(),
-                /* SED */ 0xF8 => self.sed(),
-                /* SEI */ 0x78 => self.sei(),
-
-                // STA
-                0x85 => self.sta(AddressingMode::ZeroPage),
-                0x95 => self.sta(AddressingMode::ZeroPageX),
-                0x8D => self.sta(AddressingMode::Absolute),
-                0x9D => self.sta(AddressingMode::AbsoluteX),
-                0x99 => self.sta(AddressingMode::AbsoluteY),
-                0x81 => self.sta(AddressingMode::IndirectX),
-                0x91 => self.sta(AddressingMode::IndirectY),
-
-                // STX
-                0x86 => self.stx(AddressingMode::ZeroPage),
-                0x96 => self.stx(AddressingMode::ZeroPageY),
-                0x8E => self.stx(AddressingMode::Absolute),
-
-                // STY
-                0x84 => self.sty(AddressingMode::ZeroPage),
-                0x94 => self.sty(AddressingMode::ZeroPageX),
-                0x8C => self.sty(AddressingMode::Absolute),
-
-                /* TAX */ 0xAA => self.tax(),
-                /* TAY */ 0xA8 => self.tay(),
-                /* TSX */ 0xBA => self.tsx(),
-                /* TXA */ 0x8A => self.txa(),
-                /* TXS */ 0x9A => self.txs(),
-                /* TYA */ 0x98 => self.tya(),
-
-                /* BRK */ 0x00 => break,
-                _ => todo!("opcode {:02X} not implemented", opcode),
+            if opcode == 0x00 {
+                break;
             }
+        }
+    }
+
+    pub fn step(&mut self) {
+        let opcode = self.memory.read(self.registers.pc);
+        self.execute_instruction(opcode);
+    }
+
+    fn execute_instruction(&mut self, opcode: u8) {
+        self.registers.pc += 1;
+        match opcode {
+            // ADC
+            0x69 => self.adc(AddressingMode::Immediate),
+            0x65 => self.adc(AddressingMode::ZeroPage),
+            0x75 => self.adc(AddressingMode::ZeroPageX),
+            0x6D => self.adc(AddressingMode::Absolute),
+            0x7D => self.adc(AddressingMode::AbsoluteX),
+            0x79 => self.adc(AddressingMode::AbsoluteY),
+            0x61 => self.adc(AddressingMode::IndirectX),
+            0x71 => self.adc(AddressingMode::IndirectY),
+
+            // AND
+            0x29 => self.and(AddressingMode::Immediate),
+            0x25 => self.and(AddressingMode::ZeroPage),
+            0x35 => self.and(AddressingMode::ZeroPageX),
+            0x2D => self.and(AddressingMode::Absolute),
+            0x3D => self.and(AddressingMode::AbsoluteX),
+            0x39 => self.and(AddressingMode::AbsoluteY),
+            0x21 => self.and(AddressingMode::IndirectX),
+            0x31 => self.and(AddressingMode::IndirectY),
+
+            // ASL
+            0x0A => self.asl(None), // Accumulator
+            0x06 => self.asl(Some(AddressingMode::ZeroPage)),
+            0x16 => self.asl(Some(AddressingMode::ZeroPageX)),
+            0x0E => self.asl(Some(AddressingMode::Absolute)),
+            0x1E => self.asl(Some(AddressingMode::AbsoluteX)),
+
+            /* BCC */ 0x90 => self.bcc(),
+            /* BCS */ 0xB0 => self.bcs(),
+            /* BEQ */ 0xF0 => self.beq(),
+
+            // BIT
+            0x24 => self.bit(AddressingMode::ZeroPage),
+            0x2C => self.bit(AddressingMode::Absolute),
+
+            /* BMI */ 0x30 => self.bmi(),
+            /* BNE */ 0xD0 => self.bne(),
+            /* BPL */ 0x10 => self.bpl(),
+            /* BVC */ 0x50 => self.bvc(),
+            /* BVS */ 0x70 => self.bvs(),
+            /* CLC */ 0x18 => self.clc(),
+            /* CLD */ 0xD8 => self.cld(),
+            /* CLI */ 0x58 => self.cli(),
+            /* CLV */ 0xB8 => self.clv(),
+
+            // CMP
+            0xC9 => self.cmp(AddressingMode::Immediate),
+            0xC5 => self.cmp(AddressingMode::ZeroPage),
+            0xD5 => self.cmp(AddressingMode::ZeroPageX),
+            0xCD => self.cmp(AddressingMode::Absolute),
+            0xDD => self.cmp(AddressingMode::AbsoluteX),
+            0xD9 => self.cmp(AddressingMode::AbsoluteY),
+            0xC1 => self.cmp(AddressingMode::IndirectX),
+            0xD1 => self.cmp(AddressingMode::IndirectY),
+
+            // CPX
+            0xE0 => self.cpx(AddressingMode::Immediate),
+            0xE4 => self.cpx(AddressingMode::ZeroPage),
+            0xEC => self.cpx(AddressingMode::Absolute),
+
+            // CPY
+            0xC0 => self.cpy(AddressingMode::Immediate),
+            0xC4 => self.cpy(AddressingMode::ZeroPage),
+            0xCC => self.cpy(AddressingMode::Absolute),
+
+            // DEC
+            0xC6 => self.dec(AddressingMode::ZeroPage),
+            0xD6 => self.dec(AddressingMode::ZeroPageX),
+            0xCE => self.dec(AddressingMode::Absolute),
+            0xDE => self.dec(AddressingMode::AbsoluteX),
+
+            /* DEX */ 0xCA => self.dex(),
+            /* DEY */ 0x88 => self.dey(),
+
+            // EOR
+            0x49 => self.eor(AddressingMode::Immediate),
+            0x45 => self.eor(AddressingMode::ZeroPage),
+            0x55 => self.eor(AddressingMode::ZeroPageX),
+            0x4D => self.eor(AddressingMode::Absolute),
+            0x5D => self.eor(AddressingMode::AbsoluteX),
+            0x59 => self.eor(AddressingMode::AbsoluteY),
+            0x41 => self.eor(AddressingMode::IndirectX),
+            0x51 => self.eor(AddressingMode::IndirectY),
+
+            // INC
+            0xE6 => self.inc(AddressingMode::ZeroPage),
+            0xF6 => self.inc(AddressingMode::ZeroPageX),
+            0xEE => self.inc(AddressingMode::Absolute),
+            0xFE => self.inc(AddressingMode::AbsoluteX),
+
+            /* INX */ 0xE8 => self.inx(),
+            /* INY */ 0xC8 => self.iny(),
+
+            // JMP
+            0x4C => self.jmp(AddressingMode::Absolute),
+            0x6C => self.jmp(AddressingMode::Indirect),
+
+            /* JSR */ 0x20 => self.jsr(),
+
+            // LDA
+            0xA9 => self.lda(AddressingMode::Immediate),
+            0xA5 => self.lda(AddressingMode::ZeroPage),
+            0xB5 => self.lda(AddressingMode::ZeroPageX),
+            0xAD => self.lda(AddressingMode::Absolute),
+            0xBD => self.lda(AddressingMode::AbsoluteX),
+            0xB9 => self.lda(AddressingMode::AbsoluteY),
+            0xA1 => self.lda(AddressingMode::IndirectX),
+            0xB1 => self.lda(AddressingMode::IndirectY),
+
+            // LDX
+            0xA2 => self.ldx(AddressingMode::Immediate),
+            0xA6 => self.ldx(AddressingMode::ZeroPage),
+            0xB6 => self.ldx(AddressingMode::ZeroPageY),
+            0xAE => self.ldx(AddressingMode::Absolute),
+            0xBE => self.ldx(AddressingMode::AbsoluteY),
+
+            // LDY
+            0xA0 => self.ldy(AddressingMode::Immediate),
+            0xA4 => self.ldy(AddressingMode::ZeroPage),
+            0xB4 => self.ldy(AddressingMode::ZeroPageX),
+            0xAC => self.ldy(AddressingMode::Absolute),
+            0xBC => self.ldy(AddressingMode::AbsoluteX),
+
+            // LSR
+            0x4A => self.lsr(None),
+            0x46 => self.lsr(Some(AddressingMode::ZeroPage)),
+            0x56 => self.lsr(Some(AddressingMode::ZeroPageX)),
+            0x4E => self.lsr(Some(AddressingMode::Absolute)),
+            0x5E => self.lsr(Some(AddressingMode::AbsoluteX)),
+
+            /* NOP */ 0xEA => {}
+
+            // ORA
+            0x09 => self.ora(AddressingMode::Immediate),
+            0x05 => self.ora(AddressingMode::ZeroPage),
+            0x15 => self.ora(AddressingMode::ZeroPageX),
+            0x0D => self.ora(AddressingMode::Absolute),
+            0x1D => self.ora(AddressingMode::AbsoluteX),
+            0x19 => self.ora(AddressingMode::AbsoluteY),
+            0x01 => self.ora(AddressingMode::IndirectX),
+            0x11 => self.ora(AddressingMode::IndirectY),
+
+            /* PHA */ 0x48 => self.pha(),
+            /* PHP */ 0x08 => self.php(),
+            /* PLA */ 0x68 => self.pla(),
+            /* PLP */ 0x28 => self.plp(),
+
+            // ROL
+            0x2A => self.rol(None),
+            0x26 => self.rol(Some(AddressingMode::ZeroPage)),
+            0x36 => self.rol(Some(AddressingMode::ZeroPageX)),
+            0x2E => self.rol(Some(AddressingMode::Absolute)),
+            0x3E => self.rol(Some(AddressingMode::AbsoluteX)),
+
+            // ROR
+            0x6A => self.ror(None),
+            0x66 => self.ror(Some(AddressingMode::ZeroPage)),
+            0x76 => self.ror(Some(AddressingMode::ZeroPageX)),
+            0x6E => self.ror(Some(AddressingMode::Absolute)),
+            0x7E => self.ror(Some(AddressingMode::AbsoluteX)),
+
+            /* RTI */ 0x40 => self.rti(),
+            /* RTS */ 0x60 => self.rts(),
+
+            // SBC
+            0xE9 => self.sbc(AddressingMode::Immediate),
+            0xE5 => self.sbc(AddressingMode::ZeroPage),
+            0xF5 => self.sbc(AddressingMode::ZeroPageX),
+            0xED => self.sbc(AddressingMode::Absolute),
+            0xFD => self.sbc(AddressingMode::AbsoluteX),
+            0xF9 => self.sbc(AddressingMode::AbsoluteY),
+            0xE1 => self.sbc(AddressingMode::IndirectX),
+            0xF1 => self.sbc(AddressingMode::IndirectY),
+
+            /* SEC */ 0x38 => self.sec(),
+            /* SED */ 0xF8 => self.sed(),
+            /* SEI */ 0x78 => self.sei(),
+
+            // STA
+            0x85 => self.sta(AddressingMode::ZeroPage),
+            0x95 => self.sta(AddressingMode::ZeroPageX),
+            0x8D => self.sta(AddressingMode::Absolute),
+            0x9D => self.sta(AddressingMode::AbsoluteX),
+            0x99 => self.sta(AddressingMode::AbsoluteY),
+            0x81 => self.sta(AddressingMode::IndirectX),
+            0x91 => self.sta(AddressingMode::IndirectY),
+
+            // STX
+            0x86 => self.stx(AddressingMode::ZeroPage),
+            0x96 => self.stx(AddressingMode::ZeroPageY),
+            0x8E => self.stx(AddressingMode::Absolute),
+
+            // STY
+            0x84 => self.sty(AddressingMode::ZeroPage),
+            0x94 => self.sty(AddressingMode::ZeroPageX),
+            0x8C => self.sty(AddressingMode::Absolute),
+
+            /* TAX */ 0xAA => self.tax(),
+            /* TAY */ 0xA8 => self.tay(),
+            /* TSX */ 0xBA => self.tsx(),
+            /* TXA */ 0x8A => self.txa(),
+            /* TXS */ 0x9A => self.txs(),
+            /* TYA */ 0x98 => self.tya(),
+
+            /* BRK */ 0x00 => {}
+            _ => todo!("opcode {:02X} not implemented", opcode),
         }
     }
 
