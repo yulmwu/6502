@@ -65,13 +65,9 @@ impl Assembler {
 
         for statement in p.0 {
             if let Statement::Instruction(instruction) = statement {
-                let i = self.assemble_instruction(instruction);
-                println!("{:X?} {}", i, self.pointer);
-                bytes.extend(i)
+                bytes.extend(self.assemble_instruction(instruction))
             }
         }
-
-        println!("{:?}", self.labels);
 
         bytes
     }
@@ -109,5 +105,54 @@ impl Assembler {
 
     fn assemble_label(&mut self, label: String) {
         self.labels.insert(label, self.pointer as u16);
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_assemble_instruction() {
+        let s = r#"
+LDX #$01
+STX $0000
+"#;
+
+        let src = Assembler::new(s.to_string()).assemble();
+        assert_eq!(src, vec![0xA2, 0x01, 0x8E, 0x00, 0x00]);
+    }
+
+    #[test]
+    fn test_assemble_label() {
+        let s = r#"
+        LDA #$02
+        CMP #$01
+        BNE FOO
+        LDA #$01
+        STA $00
+        BRK
+        
+        FOO:
+            LDA #$01
+            STA $01
+            BRK
+        "#;
+
+        let src = Assembler::new(s.to_string()).assemble();
+        assert_eq!(
+            src,
+            vec![
+                0xA9, 0x02, // LDA #$02
+                0xC9, 0x01, // CMP #$01
+                0xD0, 0x05, // BNE FOO
+                0xA9, 0x01, // LDA #$01
+                0x85, 0x00, // STA $00
+                0x00, // BRK
+                0xA9, 0x01, // LDA #$01
+                0x85, 0x01, // STA $01
+                0x00, // BRK
+            ]
+        );
     }
 }
