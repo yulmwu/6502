@@ -126,17 +126,17 @@ STX $0000
     #[test]
     fn test_assemble_label() {
         let s = r#"
-        LDA #$02
-        CMP #$01
-        BNE FOO
-        LDA #$01
-        STA $00
-        BRK
-        
-        FOO:
-            LDA #$01
-            STA $01
-            BRK
+LDA #$02
+CMP #$01
+BNE FOO
+LDA #$01
+STA $00
+BRK
+
+FOO:
+    LDA #$01
+    STA $01
+    BRK
         "#;
 
         let src = Assembler::new(s.to_string()).assemble();

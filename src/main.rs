@@ -14,7 +14,7 @@ STA $00
 BRK
 
 FOO:
-    LDA #$01
+    LDA #$02
     STA $01
     BRK
     "#;
