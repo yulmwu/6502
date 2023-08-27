@@ -1,3 +1,5 @@
+use crate::cpu::DebugCallback;
+
 pub const STACK_BASE: u16 = 0x0100;
 
 /// # Memory Bus
@@ -8,6 +10,7 @@ pub trait MemoryBus {
     type Data;
     type Addr;
     fn rom(&mut self, data: &[Self::Data]);
+    fn reset(&mut self);
     fn write(&mut self, addr: Self::Addr, data: Self::Data);
     fn read(&self, addr: Self::Addr) -> Self::Data;
     fn write_addr(&mut self, addr: Self::Addr, data: Self::Addr);
@@ -24,14 +27,40 @@ pub trait MemoryBus {
 ///
 /// The actual ROM memory map of the MOS 6502 ranges from `0x8000` - `0xFFF9`, and interrupt vectors are stored in `0xFFFA` - `0xFFFF`.
 /// however, since it does not implement interrupts, it is currently not used.
-#[derive(Debug)]
 pub struct Memory {
     pub mem: [u8; 0xFFFF],
+    debug_callback: Option<DebugCallback>,
+}
+
+impl Memory {
+    pub fn new() -> Memory {
+        Memory {
+            mem: [0; 0xFFFF],
+            debug_callback: None,
+        }
+    }
+
+    pub fn set_debug_callback(&mut self, debug_callback: DebugCallback) {
+        self.debug_callback = Some(debug_callback);
+    }
+
+    pub fn clear_debug_callback(&mut self) {
+        self.debug_callback = None;
+    }
+
+    fn debug(&self, message: &str) {
+        if let Some(debug) = &self.debug_callback {
+            debug(message);
+        }
+    }
 }
 
 impl Default for Memory {
     fn default() -> Memory {
-        Memory { mem: [0; 0xFFFF] }
+        Memory {
+            mem: [0; 0xFFFF],
+            debug_callback: None,
+        }
     }
 }
 
@@ -55,21 +84,31 @@ impl MemoryBus for Memory {
 
     /// `rom` function loads the program from address `0x8000`.
     fn rom(&mut self, program: &[Self::Data]) {
+        self.debug("Load ROM");
         self.mem[0x8000..0x8000 + program.len()].copy_from_slice(program);
+    }
+
+    /// Resets the memory.
+    fn reset(&mut self) {
+        self.debug("Reset Memory");
+        self.mem = [0; 0xFFFF];
     }
 
     /// Write data to memory address
     fn write(&mut self, address: Self::Addr, data: Self::Data) {
+        self.debug(&format!("Write 0x{:04X} = 0x{:02X}", address, data));
         self[address] = data;
     }
 
     /// Read data from memory address
     fn read(&self, address: Self::Addr) -> Self::Data {
+        self.debug(&format!("Read 0x{:04X}", address));
         self[address]
     }
 
     /// Write 16-bit data to memory address (little endian)
     fn write_addr(&mut self, address: Self::Addr, data: Self::Addr) {
+        self.debug(&format!("Write 0x{:04X} = 0x{:04X}", address, data));
         let [lsb, msb] = data.to_le_bytes();
 
         self.write(address, lsb);
@@ -78,6 +117,7 @@ impl MemoryBus for Memory {
 
     /// Read 16-bit data from memory address (little endian)
     fn read_addr(&self, address: Self::Addr) -> Self::Addr {
+        self.debug(&format!("Read 0x{:04X}", address));
         let lsb = self.read(address);
         let msb = self.read(address + 1);
 
@@ -112,7 +152,8 @@ mod tests {
     }
 }
 
-pub fn memory_hexdump(memory: &Memory, start: u16, end: u16) -> String {
+pub fn memory_hexdump(memory: &mut Memory, start: u16, end: u16) -> String {
+    memory.clear_debug_callback();
     let mut result = Vec::new();
 
     for addr in (start..=end).step_by(16) {
