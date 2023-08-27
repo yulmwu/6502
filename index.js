@@ -2,8 +2,9 @@ import init, { Emulator } from './static/wasm.js'
 
 init().then(() => {
     const evaluator = new Emulator()
-
     evaluator.reset()
+    evaluator.set_cpu_debug_callback(console.log)
+    evaluator.set_memory_debug_callback(console.log)
 
     const input = document.getElementById('input')
     const loadButton = document.getElementById('load')
