@@ -1,22 +1,27 @@
 #![allow(dead_code)]
 
-use std::fmt;
+use std::{fmt, time::Duration};
 
 use crate::{
     addressing_mode::AddressingMode,
     memory::{MemoryBus, STACK_BASE},
     registers::Registers,
+    Debugger,
 };
 
 #[doc=include_str!("../../README.md")]
-#[derive(Debug, Default)]
+#[derive(Default)]
 pub struct Cpu<T>
 where
     T: MemoryBus<Data = u8, Addr = u16>,
 {
     pub registers: Registers,
     pub memory: T,
+    debug_interval: Option<Duration>,
+    debug_callback: Option<DebugCallback>,
 }
+
+pub type DebugCallback = Box<dyn Fn(&str)>;
 
 impl<T> fmt::Display for Cpu<T>
 where
@@ -35,7 +40,13 @@ where
         Cpu {
             registers: Registers::default(),
             memory,
+            debug_interval: None,
+            debug_callback: None,
         }
+    }
+
+    pub fn set_debug_callback(&mut self, callback: DebugCallback) {
+        self.debug_callback = Some(callback);
     }
 
     pub fn reset(&mut self) {
@@ -43,28 +54,31 @@ where
             pc: 0x8000,
             ..Registers::default()
         };
-        self.memory = T::default();
+        self.memory.reset();
+        self.debug("Reset CPU");
     }
 
     pub fn load(&mut self, program: &[T::Data]) {
         self.memory.rom(program);
     }
 
-    /// returns number of cycles
     pub fn execute(&mut self) {
         loop {
             let opcode = self.memory.read(self.registers.pc);
+
+            self.debug(&format!(
+                "Execute 0x{:02X} at 0x{:04X}",
+                opcode, self.registers.pc
+            ));
+
             self.execute_instruction(opcode);
 
             if opcode == 0x00 {
                 break;
             }
         }
-    }
 
-    pub fn step(&mut self) {
-        let opcode = self.memory.read(self.registers.pc);
-        self.execute_instruction(opcode);
+        self.debug("Program finished");
     }
 
     fn execute_instruction(&mut self, opcode: u8) {
@@ -283,11 +297,16 @@ where
         self.memory
             .write(STACK_BASE + self.registers.sp as T::Addr, data);
         self.registers.sp = self.registers.sp.wrapping_sub(1);
+
+        self.debug(&format!("Stack push 0x{:02X}", data));
     }
 
     fn stack_pop(&mut self) -> T::Data {
         self.registers.sp = self.registers.sp.wrapping_add(1);
-        self.memory.read(STACK_BASE + self.registers.sp as T::Addr)
+        let data = self.memory.read(STACK_BASE + self.registers.sp as T::Addr);
+
+        self.debug(&format!("Stack pop 0x{:02X}", data));
+        data
     }
 
     fn stack_push_addr(&mut self, data: T::Addr) {
@@ -295,16 +314,22 @@ where
 
         self.stack_push(msb);
         self.stack_push(lsb);
+
+        self.debug(&format!("Stack push 0x{:04X}", data));
     }
 
     fn stack_pop_addr(&mut self) -> T::Addr {
         let lsb = self.stack_pop();
         let msb = self.stack_pop();
+        let data = T::Addr::from_le_bytes([lsb, msb]);
 
-        T::Addr::from_le_bytes([lsb, msb])
+        self.debug(&format!("Stack pop 0x{:04X}", data));
+        data
     }
 
     fn get_address_from_mode(&mut self, mode: AddressingMode) -> T::Addr {
+        self.debug(&format!("Addressing mode {:?}", mode));
+
         match mode {
             AddressingMode::Immediate => {
                 let data = self.registers.pc;
@@ -1038,6 +1063,28 @@ where
     fn tya(&mut self) {
         self.registers.a = self.registers.y;
         self.registers.set_zero_negative_flags(self.registers.a);
+    }
+}
+
+impl<T> Debugger for Cpu<T>
+where
+    T: MemoryBus<Data = u8, Addr = u16> + Default,
+{
+    fn step(&mut self) {
+        let opcode = self.memory.read(self.registers.pc);
+        self.registers.pc += 1;
+
+        self.execute_instruction(opcode);
+    }
+
+    fn set_interval(&mut self, duration: Option<Duration>) {
+        self.debug_interval = duration;
+    }
+
+    fn debug(&self, message: &str) {
+        if let Some(ref callback) = self.debug_callback {
+            callback(message);
+        }
     }
 }
 

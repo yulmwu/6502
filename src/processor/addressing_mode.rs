@@ -1,5 +1,5 @@
 #[doc = include_str!("../../docs/addressing_mode.md")]
-#[derive(Clone, Copy)]
+#[derive(Clone, Copy, Debug)]
 pub enum AddressingMode {
     // Implicit,
     // Accumulator,
