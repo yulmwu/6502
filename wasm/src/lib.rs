@@ -23,7 +23,7 @@ impl Emulator {
     pub fn set_cpu_debug_callback(&mut self, debug_callback: Function) {
         self.cpu.set_debug_callback(Box::new(move |msg| {
             debug_callback
-                .call1(&JsValue::NULL, &JsValue::from_str(&msg))
+                .call1(&JsValue::NULL, &JsValue::from_str(msg))
                 .unwrap();
         }));
     }
@@ -31,7 +31,7 @@ impl Emulator {
     pub fn set_memory_debug_callback(&mut self, debug_callback: Function) {
         self.cpu.memory.set_debug_callback(Box::new(move |msg| {
             debug_callback
-                .call1(&JsValue::NULL, &JsValue::from_str(&msg))
+                .call1(&JsValue::NULL, &JsValue::from_str(msg))
                 .unwrap();
         }));
     }
