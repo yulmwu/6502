@@ -20,10 +20,17 @@ FOO:
     "#;
     let src = Assembler::new(s.to_string()).assemble();
     println!("{:?}", src);
-    let mut emulator = Cpu::<Memory>::default();
+
+    let mut memory = Memory::new();
+    memory.set_debug_callback(Box::new(|msg| println!("Memory Debug : {msg}")));
+
+    let mut emulator = Cpu::<Memory>::new(memory);
+    emulator.set_debug_callback(Box::new(|msg| println!("CPU Debug    : {msg}")));
+
     emulator.reset();
     emulator.load(&src);
     emulator.execute();
-    println!("{}", memory_hexdump(&emulator.memory, 0x0000, 0x0020));
+
+    println!("{}", memory_hexdump(&mut emulator.memory, 0x0000, 0x0020));
     // println!("{}", memory_hexdump(&emulator.memory, 0x8000, 0x800F));
 }
