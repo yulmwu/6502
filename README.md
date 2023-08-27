@@ -12,11 +12,11 @@ it has five 8-bit registers (A, X, Y, P, S) and a 16-bit program counter (PC), a
 - [x] Addressing modes
 - [x] Implement instructions (without `bit` instruction)
 - [x] Assembler (in progress)
+- [x] Debugger (in progress)
 
 ## TODO
 
 - [ ] Implement interrupts
-- [ ] Debugger
 
 # References
 
