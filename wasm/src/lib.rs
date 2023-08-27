@@ -14,6 +14,7 @@ pub struct Emulator {
 #[wasm_bindgen]
 impl Emulator {
     #[wasm_bindgen(constructor)]
+    #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
         Self {
             cpu: Cpu::default(),
@@ -36,6 +37,14 @@ impl Emulator {
         }));
     }
 
+    pub fn set_registers_debug_callback(&mut self, debug_callback: Function) {
+        self.cpu.registers.set_debug_callback(Box::new(move |msg| {
+            debug_callback
+                .call1(&JsValue::NULL, &JsValue::from_str(msg))
+                .unwrap();
+        }));
+    }
+
     pub fn load(&mut self, data: Vec<u8>) {
         self.cpu.load(&data);
     }
@@ -52,8 +61,8 @@ impl Emulator {
         self.cpu.step();
     }
 
-    pub fn memory_hexdump(&mut self, start: u16, end: u16) -> String {
-        memory_hexdump(&mut self.cpu.memory, start, end)
+    pub fn memory_hexdump(&self, start: u16, end: u16) -> String {
+        memory_hexdump(self.cpu.memory.mem, start, end)
     }
 
     pub fn cpu_status(&self) -> String {

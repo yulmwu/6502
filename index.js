@@ -17,12 +17,17 @@ init().then(() => {
     const debug_output = document.getElementById('debug_output')
 
     evaluator.set_cpu_debug_callback((msg) => {
-        debug_output.value += `[CPU Debug]:    ${msg}\n`
+        debug_output.value += `[CPU Debug]      : ${msg}\n`
         debug_output.scrollTop = debug_output.scrollHeight
     })
 
     evaluator.set_memory_debug_callback((msg) => {
-        debug_output.value += `[Memory Debug]: ${msg}\n`
+        debug_output.value += `[Memory Debug]   : ${msg}\n`
+        debug_output.scrollTop = debug_output.scrollHeight
+    })
+
+    evaluator.set_registers_debug_callback((msg) => {
+        debug_output.value += `[Register Debug] : ${msg}\n`
         debug_output.scrollTop = debug_output.scrollHeight
     })
 

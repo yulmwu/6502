@@ -237,6 +237,12 @@ export class Emulator {
         wasm.emulator_set_memory_debug_callback(this.__wbg_ptr, addHeapObject(debug_callback));
     }
     /**
+    * @param {Function} debug_callback
+    */
+    set_registers_debug_callback(debug_callback) {
+        wasm.emulator_set_registers_debug_callback(this.__wbg_ptr, addHeapObject(debug_callback));
+    }
+    /**
     * @param {Uint8Array} data
     */
     load(data) {
