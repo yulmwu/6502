@@ -50,10 +50,7 @@ where
     }
 
     pub fn reset(&mut self) {
-        self.registers = Registers {
-            pc: 0x8000,
-            ..Registers::default()
-        };
+        self.registers.reset();
         self.memory.reset();
         self.debug("Reset CPU");
     }

@@ -102,8 +102,9 @@ impl MemoryBus for Memory {
 
     /// Read data from memory address
     fn read(&self, address: Self::Addr) -> Self::Data {
-        self.debug(&format!("Read 0x{:04X}", address));
-        self[address]
+        let data = self[address];
+        self.debug(&format!("Read 0x{:04X} = 0x{:02X}", address, data));
+        data
     }
 
     /// Write 16-bit data to memory address (little endian)
@@ -152,8 +153,11 @@ mod tests {
     }
 }
 
-pub fn memory_hexdump(memory: &mut Memory, start: u16, end: u16) -> String {
-    memory.clear_debug_callback();
+pub fn memory_hexdump(memory: [u8; 0xFFFF], start: u16, end: u16) -> String {
+    let memory = Memory {
+        mem: memory,
+        debug_callback: None,
+    };
     let mut result = Vec::new();
 
     for addr in (start..=end).step_by(16) {
