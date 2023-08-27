@@ -1072,7 +1072,11 @@ where
 {
     fn step(&mut self) {
         let opcode = self.memory.read(self.registers.pc);
-        self.registers.pc += 1;
+
+        self.debug(&format!(
+            "Execute 0x{:02X} at 0x{:04X}",
+            opcode, self.registers.pc
+        ));
 
         self.execute_instruction(opcode);
     }
