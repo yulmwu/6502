@@ -12,6 +12,9 @@ pub struct Emulator {
 }
 
 #[wasm_bindgen]
+pub struct AssemblerResult(emulator::AssemblerResult<Vec<u8>>);
+
+#[wasm_bindgen]
 impl Emulator {
     #[wasm_bindgen(constructor)]
     #[allow(clippy::new_without_default)]
@@ -69,7 +72,7 @@ impl Emulator {
         format!("{}", self.cpu)
     }
 
-    pub fn assemble(&self, source: &str) -> Vec<u8> {
-        Assembler::new(source.to_string()).assemble()
+    pub fn assemble(&self, source: &str) -> AssemblerResult {
+        AssemblerResult(Assembler::new(source.to_string()).assemble())
     }
 }
