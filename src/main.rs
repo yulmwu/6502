@@ -18,7 +18,7 @@ FOO:
     STA $01
     BRK
     "#;
-    let src = Assembler::new(s.to_string()).assemble();
+    let src = Assembler::new(s.to_string()).assemble().unwrap();
     println!("{:?}", src);
 
     let mut memory = Memory::new();

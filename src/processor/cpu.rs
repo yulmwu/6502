@@ -1,6 +1,4 @@
-#![allow(dead_code)]
-
-use std::{fmt, time::Duration};
+use std::fmt;
 
 use crate::{
     addressing_mode::AddressingMode,
@@ -17,7 +15,6 @@ where
 {
     pub registers: Registers,
     pub memory: T,
-    debug_interval: Option<Duration>,
     debug_callback: Option<DebugCallback>,
 }
 
@@ -40,7 +37,6 @@ where
         Cpu {
             registers: Registers::default(),
             memory,
-            debug_interval: None,
             debug_callback: None,
         }
     }
@@ -401,11 +397,6 @@ where
     fn get_data_from_addressing_mode(&mut self, mode: AddressingMode) -> T::Data {
         let address = self.get_address_from_mode(mode);
         self.memory.read(address)
-    }
-
-    fn get_address_from_addressing_mode(&mut self, mode: AddressingMode) -> T::Addr {
-        let address = self.get_address_from_mode(mode);
-        self.memory.read_addr(address)
     }
 
     fn add_to_accumulator_with_carry(&mut self, data: T::Data) {
@@ -1076,10 +1067,6 @@ where
         ));
 
         self.execute_instruction(opcode);
-    }
-
-    fn set_interval(&mut self, duration: Option<Duration>) {
-        self.debug_interval = duration;
     }
 
     fn debug(&self, message: &str) {
