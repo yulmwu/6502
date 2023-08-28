@@ -61,12 +61,16 @@ FOO:
             evaluator.reset()
 
             let input = document.getElementById('input').value
+            console.log(input)
             let assembled = evaluator.assemble(input)
-            console.log(input, assembled)
 
-            evaluator.load(assembled)
-
-            update_output()
+            if (assembled.kind() === 1) {
+                update_output()
+                output.value = `Error: ${assembled.error()}`
+            } else {
+                evaluator.load(assembled.value())
+                update_output()
+            }
         } catch (e) {
             output.value = `Error: ${e}`
         }

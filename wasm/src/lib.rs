@@ -6,13 +6,46 @@ use emulator::{
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
 
+// #[wasm_bindgen]
+// extern "C" {
+//     #[wasm_bindgen(js_namespace = console)]
+//     fn log(s: &str);
+// }
+
 #[wasm_bindgen]
 pub struct Emulator {
     cpu: Cpu<Memory>,
 }
 
 #[wasm_bindgen]
-pub struct AssemblerResult(emulator::AssemblerResult<Vec<u8>>);
+#[derive(Clone)]
+pub enum AssemblerResultKind {
+    Ok,
+    Err,
+}
+
+#[wasm_bindgen]
+#[derive(Clone)]
+pub struct AssemblerResult {
+    kind: AssemblerResultKind,
+    value: Option<Vec<u8>>,
+    error: Option<String>,
+}
+
+#[wasm_bindgen]
+impl AssemblerResult {
+    pub fn kind(&self) -> AssemblerResultKind {
+        self.kind.clone()
+    }
+
+    pub fn value(&self) -> Option<Vec<u8>> {
+        self.value.clone()
+    }
+
+    pub fn error(&self) -> Option<String> {
+        self.error.clone()
+    }
+}
 
 #[wasm_bindgen]
 impl Emulator {
@@ -73,6 +106,19 @@ impl Emulator {
     }
 
     pub fn assemble(&self, source: &str) -> AssemblerResult {
-        AssemblerResult(Assembler::new(source.to_string()).assemble())
+        let src = Assembler::new(source.to_string()).assemble();
+
+        match src {
+            Ok(src) => AssemblerResult {
+                kind: AssemblerResultKind::Ok,
+                value: Some(src),
+                error: None,
+            },
+            Err(err) => AssemblerResult {
+                kind: AssemblerResultKind::Err,
+                value: None,
+                error: Some(err.to_string()),
+            },
+        }
     }
 }
