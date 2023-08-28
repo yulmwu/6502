@@ -1,3 +1,5 @@
+use crate::{AssemblerError, AssemblerResult};
+
 macro_rules! enum_mnemonics {
     ($($ident:ident),*) => {
         #[repr(u8)]
@@ -6,11 +8,19 @@ macro_rules! enum_mnemonics {
             $($ident,)*
         }
 
-        impl From<&str> for Mnemonics {
-            fn from(s: &str) -> Self {
-                match s {
+        impl Mnemonics {
+            pub fn to_mnemonics(s: &str) -> AssemblerResult<Self> {
+                Ok(match s {
                     $(stringify!($ident) => Mnemonics::$ident,)*
-                    _ => panic!("Invalid mnemonic"),
+                    _ => return Err(AssemblerError::InvalidMnemonic(s.to_string())),
+                })
+            }
+        }
+
+        impl std::fmt::Display for Mnemonics {
+            fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+                match self {
+                    $(Mnemonics::$ident => write!(f, "{}", stringify!($ident)),)*
                 }
             }
         }
@@ -98,11 +108,14 @@ pub enum NumberType {
     Hexadecimal16(u16),
 }
 
-pub fn instruction_to_byte(mnemonic: Mnemonics, addressing_mode: AddressingMode) -> u8 {
+pub fn instruction_to_byte(
+    mnemonic: Mnemonics,
+    addressing_mode: AddressingMode,
+) -> AssemblerResult<u8> {
     use AddressingMode::*;
     use Mnemonics::*;
 
-    match (mnemonic, addressing_mode) {
+    Ok(match (mnemonic, addressing_mode) {
         // ADC
         (ADC, IMM) => 0x69,
         (ADC, RELZPG) => 0x65,
@@ -310,6 +323,11 @@ pub fn instruction_to_byte(mnemonic: Mnemonics, addressing_mode: AddressingMode)
         (TXS, IMPACC) => 0x9A,
         // TYA
         (TYA, IMPACC) => 0x98,
-        _ => panic!("Invalid instruction and addressing mode combination"),
-    }
+        _ => {
+            return Err(AssemblerError::InvalidInstruction(
+                mnemonic.to_string(),
+                addressing_mode,
+            ))
+        }
+    })
 }

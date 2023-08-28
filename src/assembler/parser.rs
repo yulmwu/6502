@@ -1,22 +1,22 @@
 use crate::{
-    AddressingMode, Instruction, Mnemonics, NumberType, Operand, OperandData, Program, Statement,
-    TokenKind,
+    AddressingMode, AssemblerError, AssemblerResult, Instruction, Mnemonics, NumberType, Operand,
+    OperandData, Program, Statement, TokenKind,
 };
 use logos::Lexer;
 
 #[derive(Debug)]
 pub struct Parser<'a> {
     pub lexer: Lexer<'a, TokenKind>,
-    current_token: Option<TokenKind>,
-    peek_token: Option<TokenKind>,
+    current_token: TokenKind,
+    peek_token: TokenKind,
 }
 
 impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a, TokenKind>) -> Self {
         let mut parser = Self {
             lexer,
-            current_token: None,
-            peek_token: None,
+            current_token: TokenKind::EOF,
+            peek_token: TokenKind::EOF,
         };
         parser.next_token();
         parser.next_token();
@@ -24,32 +24,41 @@ impl<'a> Parser<'a> {
     }
 
     fn next_token(&mut self) {
-        self.current_token = self.peek_token.take();
-        self.peek_token = self.lexer.next().transpose().unwrap();
+        self.current_token = self.peek_token.clone();
+        self.peek_token = self
+            .lexer
+            .next()
+            .transpose()
+            .unwrap()
+            .unwrap_or(TokenKind::EOF);
     }
 
-    fn expected(&mut self, expected: TokenKind) -> ! {
-        panic!("Expected {:?} but got {:?}", expected, self.current_token);
+    fn expected(&mut self, expected: TokenKind) -> AssemblerResult<()> {
+        Err(AssemblerError::UnexpectedToken {
+            expected,
+            found: self.current_token.clone(),
+        })
     }
 
-    fn expect_token(&mut self, token: TokenKind) {
-        if self.current_token == Some(token.clone()) {
+    fn expect_token(&mut self, token: TokenKind) -> AssemblerResult<()> {
+        if self.current_token == token.clone() {
             self.next_token();
+            Ok(())
         } else {
-            self.expected(token);
+            self.expected(token)
         }
     }
 
-    pub fn parse(&mut self) -> Program {
+    pub fn parse(&mut self) -> AssemblerResult<Program> {
         let mut program = Program::default();
 
-        while let Some(token) = self.current_token.clone() {
-            match token {
+        while self.current_token != TokenKind::EOF {
+            match self.current_token.clone() {
                 TokenKind::Identifier(identifier) => {
-                    let statement = self.parse_identifier(identifier);
+                    let statement = self.parse_identifier(identifier)?;
                     program.0.push(statement);
 
-                    if self.current_token == Some(TokenKind::Newline) {
+                    if self.current_token == TokenKind::Newline {
                         self.next_token();
                     }
                 }
@@ -57,29 +66,32 @@ impl<'a> Parser<'a> {
                     self.next_token();
                 }
                 _ => {
-                    panic!("Unexpected token {:?}", token);
+                    return Err(AssemblerError::UnexpectedToken {
+                        expected: TokenKind::Identifier(String::new()),
+                        found: self.current_token.clone(),
+                    })
                 }
             }
         }
 
-        program
+        Ok(program)
     }
 
-    fn parse_identifier(&mut self, identifier: String) -> Statement {
-        if self.peek_token == Some(TokenKind::Colon) {
+    fn parse_identifier(&mut self, identifier: String) -> AssemblerResult<Statement> {
+        Ok(if self.peek_token == TokenKind::Colon {
             self.next_token();
             self.next_token();
             Statement::Label(identifier)
         } else {
-            let instruction = Mnemonics::from(identifier.as_str());
+            let instruction = Mnemonics::to_mnemonics(identifier.as_str())?;
             self.next_token();
-            let operand = self.parse_operand();
+            let operand = self.parse_operand()?;
 
             Statement::Instruction(Instruction {
                 opcode: instruction,
                 operand,
             })
-        }
+        })
     }
 
     /*
@@ -98,161 +110,167 @@ impl<'a> Parser<'a> {
     ZPG LDA $00 ($00 is the operand) -+
     REL BNE $00 ($00 is the operand) -+--> RELZPG
     */
-    fn parse_operand(&mut self) -> Operand {
-        match self.current_token.clone() {
-            Some(TokenKind::Hash) => {
+    fn parse_operand(&mut self) -> AssemblerResult<Operand> {
+        Ok(match self.current_token.clone() {
+            TokenKind::Hash => {
                 self.next_token();
-                let operand_data = self.parse_operand_data();
+                let operand_data = self.parse_operand_data()?;
 
                 if !operand_data.is_8() {
-                    panic!("Invalid operand");
+                    return Err(AssemblerError::InvalidOperand);
                 }
 
                 self.next_token();
 
                 Operand::new(AddressingMode::IMM, Some(operand_data))
             }
-            Some(TokenKind::Hexadecimal8Bit(number)) => {
+            TokenKind::Hexadecimal8Bit(number) => {
                 // $00
                 self.next_token();
                 let operand_data = OperandData::Number(NumberType::Hexadecimal8(number));
 
-                self.parse_8bit_operand_comma(operand_data)
+                self.parse_8bit_operand_comma(operand_data)?
             }
-            Some(TokenKind::Hexadecimal16Bit(number)) => {
+            TokenKind::Hexadecimal16Bit(number) => {
                 // $0000
                 self.next_token();
                 let operand_data = OperandData::Number(NumberType::Hexadecimal16(number));
 
-                self.parse_16bit_operand_comma(operand_data)
+                self.parse_16bit_operand_comma(operand_data)?
             }
-            Some(TokenKind::LParen) => {
+            TokenKind::LParen => {
                 // (
                 self.next_token();
-                let operand_data = self.parse_operand_data(); // ($0000
+                let operand_data = self.parse_operand_data()?; // ($0000
                 self.next_token();
 
-                self.parse_operand_lparen(operand_data)
+                self.parse_operand_lparen(operand_data)?
             }
-            Some(TokenKind::Decimal(number)) => {
+            TokenKind::Decimal(number) => {
                 // 00
                 self.next_token();
                 if number > 255 {
                     let operand_data = OperandData::Number(NumberType::Decimal16(number));
-                    self.parse_16bit_operand_comma(operand_data)
+                    self.parse_16bit_operand_comma(operand_data)?
                 } else {
                     let operand_data = OperandData::Number(NumberType::Decimal8(number as u8));
-                    self.parse_8bit_operand_comma(operand_data)
+                    self.parse_8bit_operand_comma(operand_data)?
                 }
             }
-            Some(TokenKind::Identifier(identifier)) => {
+            TokenKind::Identifier(identifier) => {
                 self.next_token();
                 let operand_data = OperandData::Label(identifier);
                 Operand::new(AddressingMode::RELZPG, Some(operand_data))
             }
-            None | Some(TokenKind::Newline) => Operand::new(AddressingMode::IMPACC, None),
-            _ => panic!("Invalid operand"),
-        }
+            TokenKind::Newline => Operand::new(AddressingMode::IMPACC, None),
+            _ => return Err(AssemblerError::InvalidOperand),
+        })
     }
 
-    fn parse_operand_data(&mut self) -> OperandData {
-        match self.current_token.clone() {
-            Some(TokenKind::Decimal(number)) => {
+    fn parse_operand_data(&mut self) -> AssemblerResult<OperandData> {
+        Ok(match self.current_token.clone() {
+            TokenKind::Decimal(number) => {
                 if number > 255 {
                     OperandData::Number(NumberType::Decimal16(number))
                 } else {
                     OperandData::Number(NumberType::Decimal8(number as u8))
                 }
             }
-            Some(TokenKind::Hexadecimal8Bit(number)) => {
+            TokenKind::Hexadecimal8Bit(number) => {
                 OperandData::Number(NumberType::Hexadecimal8(number))
             }
-            Some(TokenKind::Hexadecimal16Bit(number)) => {
+            TokenKind::Hexadecimal16Bit(number) => {
                 OperandData::Number(NumberType::Hexadecimal16(number))
             }
-            Some(TokenKind::Identifier(identifier)) => OperandData::Label(identifier),
-            _ => panic!("Invalid operand data"),
-        }
+            TokenKind::Identifier(identifier) => OperandData::Label(identifier),
+            _ => return Err(AssemblerError::InvalidOperand),
+        })
     }
 
-    fn parse_8bit_operand_comma(&mut self, operand_data: OperandData) -> Operand {
-        if let Some(TokenKind::Comma) = self.current_token.clone() {
+    fn parse_8bit_operand_comma(&mut self, operand_data: OperandData) -> AssemblerResult<Operand> {
+        Ok(if let TokenKind::Comma = self.current_token.clone() {
             self.next_token();
             match self.current_token.clone() {
-                Some(TokenKind::X) => {
+                TokenKind::X => {
                     self.next_token();
                     // $00,X
                     Operand::new(AddressingMode::ZPX, Some(operand_data))
                 }
-                Some(TokenKind::Y) => {
+                TokenKind::Y => {
                     self.next_token();
                     // $00,Y
                     Operand::new(AddressingMode::ZPY, Some(operand_data))
                 }
-                _ => panic!("Invalid operand"),
+                _ => return Err(AssemblerError::InvalidOperand),
             }
         } else {
             Operand::new(AddressingMode::RELZPG, Some(operand_data))
-        }
+        })
     }
 
-    fn parse_16bit_operand_comma(&mut self, operand_data: OperandData) -> Operand {
-        if let Some(TokenKind::Comma) = self.current_token.clone() {
+    fn parse_16bit_operand_comma(&mut self, operand_data: OperandData) -> AssemblerResult<Operand> {
+        Ok(if let TokenKind::Comma = self.current_token.clone() {
             self.next_token();
             match self.current_token.clone() {
-                Some(TokenKind::X) => {
+                TokenKind::X => {
                     self.next_token();
                     // $0000,X
                     Operand::new(AddressingMode::ABX, Some(operand_data))
                 }
-                Some(TokenKind::Y) => {
+                TokenKind::Y => {
                     self.next_token();
                     // $0000,Y
                     Operand::new(AddressingMode::ABY, Some(operand_data))
                 }
-                _ => panic!("Invalid operand"),
+                _ => return Err(AssemblerError::InvalidOperand),
             }
         } else {
             Operand::new(AddressingMode::ABS, Some(operand_data))
-        }
+        })
     }
 
-    fn parse_operand_lparen(&mut self, operand_data: OperandData) -> Operand {
-        match self.current_token.clone() {
-            Some(TokenKind::Comma) => {
+    fn parse_operand_lparen(&mut self, operand_data: OperandData) -> AssemblerResult<Operand> {
+        Ok(match self.current_token.clone() {
+            TokenKind::Comma => {
                 // ($0000,
                 self.next_token();
 
-                self.expect_token(TokenKind::X); // ($00,X
+                self.expect_token(TokenKind::X)?; // ($00,X
 
-                if let Some(TokenKind::RParen) = self.current_token.clone() {
+                if let TokenKind::RParen = self.current_token.clone() {
                     self.next_token();
                     Operand::new(AddressingMode::IDX, Some(operand_data))
                     // TODO: later check if the operand is 8 bit
                 } else {
-                    self.expected(TokenKind::RParen);
+                    return Err(AssemblerError::UnexpectedToken {
+                        expected: TokenKind::RParen,
+                        found: self.current_token.clone(),
+                    });
                 }
             }
-            Some(TokenKind::RParen) => {
+            TokenKind::RParen => {
                 self.next_token();
 
                 // ($0000),
-                if let Some(TokenKind::Comma) = self.current_token.clone() {
+                if let TokenKind::Comma = self.current_token.clone() {
                     self.next_token();
-                    if let Some(TokenKind::Y) = self.current_token.clone() {
+                    if let TokenKind::Y = self.current_token.clone() {
                         self.next_token();
                         // ($00),Y
                         Operand::new(AddressingMode::IDY, Some(operand_data))
                         // TODO: later check if the operand is 8 bit
                     } else {
-                        self.expected(TokenKind::Y);
+                        return Err(AssemblerError::UnexpectedToken {
+                            expected: TokenKind::Y,
+                            found: self.current_token.clone(),
+                        });
                     }
                 } else {
                     Operand::new(AddressingMode::IND, Some(operand_data))
                 }
             }
-            _ => panic!("Invalid operand"),
-        }
+            _ => return Err(AssemblerError::InvalidOperand),
+        })
     }
 }
 
@@ -269,7 +287,7 @@ mod tests {
     fn test_parse_instruction(input: &str, expected: Instruction) {
         let lexer = Lexer::new(input);
         let mut parser = Parser::new(lexer);
-        let instruction = parser.parse().0;
+        let instruction = parser.parse().unwrap().0;
 
         assert_eq!(instruction[0], Statement::Instruction(expected));
     }

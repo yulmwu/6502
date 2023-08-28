@@ -34,6 +34,7 @@ pub enum TokenKind {
     #[regex(r"0x[0-9a-fA-F]{4}", |lexer| hexadecimal16bit(lexer, 2))]
     #[regex(r"\$[0-9a-fA-F]{4}", |lexer| hexadecimal16bit(lexer, 1))] Hexadecimal16Bit(u16),
     #[regex(r"[a-zA-Z_][a-zA-Z0-9_]*", identifier)] Identifier(String),
+    EOF
 }
 
 #[cfg(test)]

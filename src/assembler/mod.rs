@@ -11,6 +11,20 @@ pub use tokenizer::*;
 use logos::Logos;
 use std::collections::HashMap;
 
+#[derive(Debug)]
+pub enum AssemblerError {
+    UnexpectedToken {
+        expected: TokenKind,
+        found: TokenKind,
+    },
+    InvalidOperand,
+    InvalidLabel,
+    InvalidInstruction(String, AddressingMode),
+    InvalidMnemonic(String),
+}
+
+pub type AssemblerResult<T> = Result<T, AssemblerError>;
+
 pub struct Assembler {
     pub source: String,
     pointer: usize,
@@ -26,10 +40,10 @@ impl Assembler {
         }
     }
 
-    pub fn assemble(&mut self) -> Vec<u8> {
+    pub fn assemble(&mut self) -> AssemblerResult<Vec<u8>> {
         let lexer = TokenKind::lexer(&self.source);
         let mut parser = Parser::new(lexer);
-        let p = parser.parse();
+        let p = parser.parse()?;
 
         let mut bytes = Vec::new();
 
@@ -65,14 +79,14 @@ impl Assembler {
 
         for statement in p.0 {
             if let Statement::Instruction(instruction) = statement {
-                bytes.extend(self.assemble_instruction(instruction))
+                bytes.extend(self.assemble_instruction(instruction)?)
             }
         }
 
-        bytes
+        Ok(bytes)
     }
 
-    fn assemble_instruction(&mut self, instruction: Instruction) -> Vec<u8> {
+    fn assemble_instruction(&mut self, instruction: Instruction) -> AssemblerResult<Vec<u8>> {
         let Instruction {
             opcode,
             operand: Operand {
@@ -80,7 +94,7 @@ impl Assembler {
                 value,
             },
         } = instruction;
-        let mut bytes = vec![instruction_to_byte(opcode, addressing_mode)];
+        let mut bytes = vec![instruction_to_byte(opcode, addressing_mode)?];
 
         if let Some(value) = value {
             match value {
@@ -91,7 +105,10 @@ impl Assembler {
                     NumberType::Hexadecimal16(value) => bytes.extend(value.to_be_bytes()),
                 },
                 OperandData::Label(label) => {
-                    let label_address = self.labels.get(&label).unwrap();
+                    let label_address = self
+                        .labels
+                        .get(&label)
+                        .ok_or(AssemblerError::InvalidLabel)?;
                     let relative_address: u8 =
                         (*label_address as i16 - self.pointer as i16 - 2) as u8;
                     bytes.extend(relative_address.to_be_bytes());
@@ -100,7 +117,7 @@ impl Assembler {
         }
 
         self.pointer += bytes.len();
-        bytes
+        Ok(bytes)
     }
 
     fn assemble_label(&mut self, label: String) {
@@ -119,7 +136,7 @@ LDX #$01
 STX $0000
 "#;
 
-        let src = Assembler::new(s.to_string()).assemble();
+        let src = Assembler::new(s.to_string()).assemble().unwrap();
         assert_eq!(src, vec![0xA2, 0x01, 0x8E, 0x00, 0x00]);
     }
 
@@ -139,7 +156,7 @@ FOO:
     BRK
         "#;
 
-        let src = Assembler::new(s.to_string()).assemble();
+        let src = Assembler::new(s.to_string()).assemble().unwrap();
         assert_eq!(
             src,
             vec![
