@@ -69,7 +69,7 @@ impl fmt::Display for Registers {
 
 impl Registers {
     pub fn reset(&mut self) {
-        self.debug(&format!("Reset registers"));
+        self.debug("Reset registers");
 
         self.a = 0;
         self.x = 0;
