@@ -41,7 +41,7 @@ impl<'a> Parser<'a> {
     }
 
     fn expect_token(&mut self, token: TokenKind) -> AssemblerResult<()> {
-        if self.current_token == token.clone() {
+        if self.current_token == token {
             self.next_token();
             Ok(())
         } else {
@@ -162,7 +162,7 @@ impl<'a> Parser<'a> {
                 let operand_data = OperandData::Label(identifier);
                 Operand::new(AddressingMode::RELZPG, Some(operand_data))
             }
-            TokenKind::Newline => Operand::new(AddressingMode::IMPACC, None),
+            TokenKind::EOF | TokenKind::Newline => Operand::new(AddressingMode::IMPACC, None),
             _ => return Err(AssemblerError::InvalidOperand),
         })
     }

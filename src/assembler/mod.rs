@@ -9,7 +9,7 @@ pub use parser::*;
 pub use tokenizer::*;
 
 use logos::Logos;
-use std::collections::HashMap;
+use std::{collections::HashMap, fmt};
 
 #[derive(Debug)]
 pub enum AssemblerError {
@@ -21,6 +21,28 @@ pub enum AssemblerError {
     InvalidLabel,
     InvalidInstruction(String, AddressingMode),
     InvalidMnemonic(String),
+}
+
+impl fmt::Display for AssemblerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            AssemblerError::UnexpectedToken { expected, found } => write!(
+                f,
+                "Unexpected token: expected {:?}, found {:?}",
+                expected, found
+            ),
+            AssemblerError::InvalidOperand => write!(f, "Invalid operand"),
+            AssemblerError::InvalidLabel => write!(f, "Invalid label"),
+            AssemblerError::InvalidInstruction(mnemonic, addressing_mode) => write!(
+                f,
+                "Invalid instruction: mnemonic {:?} does not support {:?} addressing mode",
+                mnemonic, addressing_mode
+            ),
+            AssemblerError::InvalidMnemonic(mnemonic) => {
+                write!(f, "Invalid mnemonic: {:?}", mnemonic)
+            }
+        }
+    }
 }
 
 pub type AssemblerResult<T> = Result<T, AssemblerError>;
