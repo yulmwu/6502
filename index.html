@@ -6,29 +6,42 @@
         <title>6502 Emulator</title>
         <script type="module" src="index.js"></script>
     </head>
-    <body style="text-align: center; padding-top: 20px;">
+    <body style="text-align: center; padding-top: 20px">
         <div style="display: inline-block; text-align: justify">
-            <div>
+            <div style="margin-bottom: 5px">
                 <button id="load">Load</button>
                 <button id="run">Run</button>
                 <button id="reset">Reset</button>
             </div>
             <textarea id="input" cols="80" rows="45"></textarea>
         </div>
-        <div style="display: inline-block; text-align: justify; padding-left: 35px;">
+        <div style="display: inline-block; text-align: justify; padding-left: 35px">
             <div>
-                <h2>Output</h2>
-                <textarea id="output" cols="80" rows="3"></textarea>
-                <h4>Memory Dump</h4>
-                <textarea id="memorydump" cols="80" rows="10"></textarea>
+                <h3>Output</h3>
+                <textarea id="output" cols="80" rows="3" readonly></textarea>
+                <h3>Memory Dump</h3>
+                <div style="margin-bottom: 5px">
+                    <input id="range_start" type="text" value="0" style="margin-right: 5px; width: 50px" />
+                    <input id="range_end" type="text" value="FFFF" style="margin-right: 5px; width: 50px" />
+                    <select id="presets" style="margin-right: 5px;">
+                        <option value="0,FFFF">All</option>
+                        <option value="0,3FFF">RAM</option>
+                        <option value="0,FF">Zero Page</option>
+                        <option value="100,1FF">Stack</option>
+                        <option value="4000,7FFF">I/O</option>
+                        <option value="8000,FFFF">ROM</option>
+                    </select>
+                    <button id="dump">Dump</button>
+                </div>
+                <textarea id="memorydump" cols="80" rows="10" style="display: block" readonly></textarea>
             </div>
             <div>
-                <h2>Debugger</h2>
-                <div>
+                <h3>Debugger</h3>
+                <div style="margin-bottom: 5px">
                     <button id="step">Step</button>
                     <button id="clear">Clear</button>
                 </div>
-                <textarea id="debug_output" cols="80" rows="18"></textarea>
+                <textarea id="debug_output" cols="80" rows="18" readonly></textarea>
             </div>
         </div>
     </body>

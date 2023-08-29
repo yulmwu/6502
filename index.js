@@ -12,6 +12,10 @@ init().then(() => {
     const output = document.getElementById('output')
     const memoryDump = document.getElementById('memorydump')
 
+    const range_start = document.getElementById('range_start')
+    const range_end = document.getElementById('range_end')
+    const dumpButton = document.getElementById('dump')
+
     const stepButton = document.getElementById('step')
     const clearButton = document.getElementById('clear')
     const debug_output = document.getElementById('debug_output')
@@ -48,10 +52,14 @@ FOO:
     const update_output = () => {
         output.value = evaluator.cpu_status()
 
-        memoryDump.value = ''
-        memoryDump.value += evaluator.memory_hexdump(0x0000, 0x10)
-        memoryDump.value += '\n'
-        memoryDump.value += evaluator.memory_hexdump(0x8000, 0x8030)
+        const start = parseInt(range_start.value, 16)
+        const end = parseInt(range_end.value, 16)
+        console.log(start, end)
+        if (isNaN(start) || isNaN(end)) {
+            memoryDump.value = 'Invalid range'
+            return
+        }
+        memoryDump.value = evaluator.memory_hexdump(start, end)
     }
 
     update_output()
@@ -72,7 +80,7 @@ FOO:
                 update_output()
             }
         } catch (e) {
-            output.value = `Error: ${e}`
+            output.value = e
         }
     })
 
@@ -81,7 +89,7 @@ FOO:
             evaluator.execute()
             update_output()
         } catch (e) {
-            output.value = `Error: ${e}`
+            output.value = e
         }
     })
 
@@ -90,7 +98,15 @@ FOO:
             evaluator.reset()
             update_output()
         } catch (e) {
-            output.value = `Error: ${e}`
+            output.value = e
+        }
+    })
+
+    dumpButton.addEventListener('click', () => {
+        try {
+            update_output()
+        } catch (e) {
+            output.value = e
         }
     })
 
@@ -99,11 +115,17 @@ FOO:
             evaluator.step()
             update_output()
         } catch (e) {
-            output.value = `Error: ${e}`
+            output.value = e
         }
     })
 
     clearButton.addEventListener('click', () => {
         debug_output.value = ''
     })
+})
+
+document.getElementById('presets').addEventListener('change', (e) => {
+    const split = e.target.value.split(',')
+    document.getElementById('range_start').value = split[0]
+    document.getElementById('range_end').value = split[1]
 })
