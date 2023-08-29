@@ -122,10 +122,11 @@ FOO:
     clearButton.addEventListener('click', () => {
         debug_output.value = ''
     })
-})
 
-document.getElementById('presets').addEventListener('change', (e) => {
-    const split = e.target.value.split(',')
-    document.getElementById('range_start').value = split[0]
-    document.getElementById('range_end').value = split[1]
+    document.getElementById('presets').addEventListener('change', (e) => {
+        const split = e.target.value.split(',')
+        document.getElementById('range_start').value = split[0]
+        document.getElementById('range_end').value = split[1]
+        update_output()
+    })
 })
