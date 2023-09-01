@@ -121,10 +121,10 @@ impl Assembler {
         if let Some(value) = value {
             match value {
                 OperandData::Number(number_type) => match number_type {
-                    NumberType::Decimal8(value) => bytes.extend(value.to_be_bytes()),
-                    NumberType::Decimal16(value) => bytes.extend(value.to_be_bytes()),
-                    NumberType::Hexadecimal8(value) => bytes.extend(value.to_be_bytes()),
-                    NumberType::Hexadecimal16(value) => bytes.extend(value.to_be_bytes()),
+                    NumberType::Decimal8(value) => bytes.extend(value.to_le_bytes()),
+                    NumberType::Decimal16(value) => bytes.extend(value.to_le_bytes()),
+                    NumberType::Hexadecimal8(value) => bytes.extend(value.to_le_bytes()),
+                    NumberType::Hexadecimal16(value) => bytes.extend(value.to_le_bytes()),
                 },
                 OperandData::Label(label) => {
                     let label_address = self
@@ -133,7 +133,7 @@ impl Assembler {
                         .ok_or(AssemblerError::InvalidLabel)?;
                     let relative_address: u8 =
                         (*label_address as i16 - self.pointer as i16 - 2) as u8;
-                    bytes.extend(relative_address.to_be_bytes());
+                    bytes.extend(relative_address.to_le_bytes());
                 }
             }
         }
