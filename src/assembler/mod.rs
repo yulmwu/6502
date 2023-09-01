@@ -131,9 +131,16 @@ impl Assembler {
                         .labels
                         .get(&label)
                         .ok_or(AssemblerError::InvalidLabel)?;
-                    let relative_address: u8 =
-                        (*label_address as i16 - self.pointer as i16 - 2) as u8;
-                    bytes.extend(relative_address.to_le_bytes());
+
+                    // Absolute addressing
+                    if opcode == Mnemonics::JMP {
+                        let absolute_address: u16 = *label_address + 0x8000;
+                        bytes.extend(absolute_address.to_le_bytes());
+                    } else {
+                        let relative_address: u8 =
+                            (*label_address as i16 - self.pointer as i16 - 2) as u8;
+                        bytes.extend(relative_address.to_le_bytes());
+                    }
                 }
             }
         }

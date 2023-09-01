@@ -214,6 +214,7 @@ pub fn instruction_to_byte(
         // INY
         (INY, IMPACC) => 0xC8,
         // JMP
+        (JMP, RELZPG) => 0x4C, // for label
         (JMP, ABS) => 0x4C,
         (JMP, IND) => 0x6C,
         // JSR
