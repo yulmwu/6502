@@ -1,7 +1,8 @@
+use assembler::Assembler;
 use emulator::{
     cpu::Cpu,
     memory::{memory_hexdump, Memory},
-    Assembler, Debugger,
+    Debugger,
 };
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
