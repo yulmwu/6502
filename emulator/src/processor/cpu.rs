@@ -7,7 +7,7 @@ use crate::{
     Debugger,
 };
 
-#[doc=include_str!("../../README.md")]
+#[doc=include_str!("../../../README.md")]
 #[derive(Default)]
 pub struct Cpu<T>
 where
@@ -426,6 +426,8 @@ where
 
         let pc = self.registers.pc as T::Addr;
         self.registers.pc = pc.wrapping_add(offset as T::Addr);
+
+        self.debug(&format!("Branch to 0x{:04X}", self.registers.pc));
     }
 
     /// ## ADC (Add with Carry)

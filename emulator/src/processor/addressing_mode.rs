@@ -1,4 +1,4 @@
-#[doc = include_str!("../../docs/addressing_mode.md")]
+#[doc = include_str!("../../../docs/addressing_mode.md")]
 #[derive(Clone, Copy, Debug)]
 pub enum AddressingMode {
     // Implicit,
