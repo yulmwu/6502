@@ -1060,7 +1060,7 @@ impl<T> Debugger for Cpu<T>
 where
     T: MemoryBus<Data = u8, Addr = u16> + Default,
 {
-    fn step(&mut self) {
+    fn step(&mut self) -> u8 {
         let opcode = self.memory.read(self.registers.pc);
 
         self.debug(&format!(
@@ -1069,6 +1069,7 @@ where
         ));
 
         self.execute_instruction(opcode);
+        opcode
     }
 
     fn debug(&self, message: &str) {
