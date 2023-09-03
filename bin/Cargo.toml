@@ -8,3 +8,4 @@ edition = "2021"
 [dependencies]
 emulator = { path = "../emulator" }
 assembler = { path = "../assembler" }
+eframe = "0.22.0"
