@@ -1,4 +1,4 @@
-use crate::cpu::DebugCallback;
+use crate::{Debugger, NoneDebugger};
 
 pub const STACK_BASE: u16 = 0x0100;
 
@@ -12,9 +12,9 @@ pub trait MemoryBus {
     fn rom(&mut self, data: &[Self::Data]);
     fn reset(&mut self);
     fn write(&mut self, addr: Self::Addr, data: Self::Data);
-    fn read(&self, addr: Self::Addr) -> Self::Data;
+    fn read(&mut self, addr: Self::Addr) -> Self::Data;
     fn write_addr(&mut self, addr: Self::Addr, data: Self::Addr);
-    fn read_addr(&self, addr: Self::Addr) -> Self::Addr;
+    fn read_addr(&mut self, addr: Self::Addr) -> Self::Addr;
 }
 
 /// # Memory Map
@@ -27,44 +27,34 @@ pub trait MemoryBus {
 ///
 /// The actual ROM memory map of the MOS 6502 ranges from `0x8000` - `0xFFF9`, and interrupt vectors are stored in `0xFFFA` - `0xFFFF`.
 /// however, since it does not implement interrupts, it is currently not used.
-pub struct Memory {
+pub struct Memory<T: Debugger> {
     pub mem: [u8; 0xFFFF],
-    debug_callback: Option<DebugCallback>,
+    pub debugger: T,
 }
 
-impl Memory {
-    pub fn new() -> Memory {
+impl<T: Debugger> Memory<T> {
+    pub fn new() -> Memory<T> {
         Memory {
             mem: [0; 0xFFFF],
-            debug_callback: None,
+            debugger: T::default(),
         }
     }
 
-    pub fn set_debug_callback(&mut self, debug_callback: DebugCallback) {
-        self.debug_callback = Some(debug_callback);
-    }
-
-    pub fn clear_debug_callback(&mut self) {
-        self.debug_callback = None;
-    }
-
-    fn debug(&self, message: &str) {
-        if let Some(debug) = &self.debug_callback {
-            debug(message);
-        }
+    fn debug(&mut self, message: &str) {
+        self.debugger.debug(message);
     }
 }
 
-impl Default for Memory {
-    fn default() -> Memory {
+impl<T: Debugger> Default for Memory<T> {
+    fn default() -> Memory<T> {
         Memory {
             mem: [0; 0xFFFF],
-            debug_callback: None,
+            debugger: T::default(),
         }
     }
 }
 
-impl std::ops::Index<u16> for Memory {
+impl<T: Debugger> std::ops::Index<u16> for Memory<T> {
     type Output = u8;
 
     fn index(&self, index: u16) -> &Self::Output {
@@ -72,13 +62,13 @@ impl std::ops::Index<u16> for Memory {
     }
 }
 
-impl std::ops::IndexMut<u16> for Memory {
+impl<T: Debugger> std::ops::IndexMut<u16> for Memory<T> {
     fn index_mut(&mut self, index: u16) -> &mut Self::Output {
         &mut self.mem[index as usize]
     }
 }
 
-impl MemoryBus for Memory {
+impl<T: Debugger> MemoryBus for Memory<T> {
     type Data = u8;
     type Addr = u16;
 
@@ -101,7 +91,7 @@ impl MemoryBus for Memory {
     }
 
     /// Read data from memory address
-    fn read(&self, address: Self::Addr) -> Self::Data {
+    fn read(&mut self, address: Self::Addr) -> Self::Data {
         let data = self[address];
         self.debug(&format!("Read 0x{:04X} = 0x{:02X}", address, data));
         data
@@ -117,7 +107,7 @@ impl MemoryBus for Memory {
     }
 
     /// Read 16-bit data from memory address (little endian)
-    fn read_addr(&self, address: Self::Addr) -> Self::Addr {
+    fn read_addr(&mut self, address: Self::Addr) -> Self::Addr {
         self.debug(&format!("Read 0x{:04X}", address));
         let lsb = self.read(address);
         let msb = self.read(address + 1);
@@ -132,7 +122,7 @@ mod tests {
 
     #[test]
     fn test_read_write() {
-        let mut memory = Memory::default();
+        let mut memory = Memory::<NoneDebugger>::default();
 
         memory.write(0x0000, 0x12);
         memory.write(0x0001, 0x34);
@@ -143,7 +133,7 @@ mod tests {
 
     #[test]
     fn test_read_write_addr() {
-        let mut memory = Memory::default();
+        let mut memory = Memory::<NoneDebugger>::default();
 
         memory.write_addr(0x0000, 0x1234);
 
@@ -154,9 +144,9 @@ mod tests {
 }
 
 pub fn memory_hexdump(memory: [u8; 0xFFFF], start: u16, end: u16) -> String {
-    let memory = Memory {
+    let mut memory: Memory<NoneDebugger> = Memory {
         mem: memory,
-        debug_callback: None,
+        ..Default::default()
     };
     let mut result = Vec::new();
 

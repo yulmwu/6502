@@ -4,45 +4,51 @@ use crate::{
     addressing_mode::AddressingMode,
     memory::{MemoryBus, STACK_BASE},
     registers::Registers,
-    Debugger,
+    CpuDebugger, Debugger, NoneDebugger,
 };
 
 #[doc=include_str!("../../../README.md")]
 #[derive(Default)]
-pub struct Cpu<T>
+pub struct Cpu<T, D, R>
 where
     T: MemoryBus<Data = u8, Addr = u16>,
+    D: Debugger,
+    R: Debugger,
 {
-    pub registers: Registers,
     pub memory: T,
-    debug_callback: Option<DebugCallback>,
+    pub debugger: D,
+    pub registers: Registers<R>,
 }
 
-pub type DebugCallback = Box<dyn Fn(&str)>;
+pub type NoneDebuggerCpu<T> = Cpu<T, NoneDebugger, NoneDebugger>;
 
-impl<T> fmt::Display for Cpu<T>
+impl<T, D, R> fmt::Display for Cpu<T, D, R>
 where
     T: MemoryBus<Data = u8, Addr = u16>,
+    D: Debugger,
+    R: Debugger,
 {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.registers)
     }
 }
 
-impl<T> Cpu<T>
+impl<T, D, R> Cpu<T, D, R>
 where
     T: MemoryBus<Data = u8, Addr = u16> + Default,
+    D: Debugger,
+    R: Debugger,
 {
-    pub fn new(memory: T) -> Cpu<T> {
+    pub fn new(memory: T) -> Cpu<T, D, R> {
         Cpu {
             registers: Registers::default(),
             memory,
-            debug_callback: None,
+            debugger: D::default(),
         }
     }
 
-    pub fn set_debug_callback(&mut self, callback: DebugCallback) {
-        self.debug_callback = Some(callback);
+    pub fn debug(&mut self, message: &str) {
+        self.debugger.debug(message);
     }
 
     pub fn reset(&mut self) {
@@ -1056,9 +1062,11 @@ where
     }
 }
 
-impl<T> Debugger for Cpu<T>
+impl<T, D, R> CpuDebugger for Cpu<T, D, R>
 where
     T: MemoryBus<Data = u8, Addr = u16> + Default,
+    D: Debugger,
+    R: Debugger,
 {
     fn step(&mut self) -> u8 {
         let opcode = self.memory.read(self.registers.pc);
@@ -1071,18 +1079,12 @@ where
         self.execute_instruction(opcode);
         opcode
     }
-
-    fn debug(&self, message: &str) {
-        if let Some(ref callback) = self.debug_callback {
-            callback(message);
-        }
-    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::memory::Memory;
+    use crate::{memory::Memory, NoneDebugger};
 
     macro_rules! assert_eq_hex {
         ($left:expr, $right:expr) => {
@@ -1090,7 +1092,7 @@ mod tests {
         };
     }
 
-    fn setup() -> Cpu<Memory> {
+    fn setup() -> NoneDebuggerCpu<Memory<NoneDebugger>> {
         Cpu::default()
     }
 

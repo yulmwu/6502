@@ -1,6 +1,6 @@
 use std::fmt;
 
-use crate::cpu::DebugCallback;
+use crate::Debugger;
 
 /// # Registers
 ///
@@ -22,18 +22,18 @@ use crate::cpu::DebugCallback;
 /// ## 16 bit
 ///
 /// - `pc`: Program Counter Register
-pub struct Registers {
+pub struct Registers<T: Debugger> {
     pub a: u8,
     pub x: u8,
     pub y: u8,
     pub p: u8,
     pub sp: u8,
     pub pc: u16,
-    debug_callback: Option<DebugCallback>,
+    pub debugger: T,
 }
 
-impl Default for Registers {
-    fn default() -> Registers {
+impl<T: Debugger> Default for Registers<T> {
+    fn default() -> Registers<T> {
         Registers {
             a: 0,
             x: 0,
@@ -41,12 +41,12 @@ impl Default for Registers {
             p: 0,
             sp: 0,
             pc: 0x8000,
-            debug_callback: None,
+            debugger: T::default(),
         }
     }
 }
 
-impl fmt::Display for Registers {
+impl<T: Debugger> fmt::Display for Registers<T> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         writeln!(
             f,
@@ -67,7 +67,7 @@ impl fmt::Display for Registers {
     }
 }
 
-impl Registers {
+impl<T: Debugger> Registers<T> {
     pub fn reset(&mut self) {
         self.debug("Reset registers");
 
@@ -79,14 +79,8 @@ impl Registers {
         self.pc = 0x8000;
     }
 
-    pub fn set_debug_callback(&mut self, debug_callback: DebugCallback) {
-        self.debug_callback = Some(debug_callback);
-    }
-
-    pub fn debug(&self, message: &str) {
-        if let Some(debug) = &self.debug_callback {
-            debug(message);
-        }
+    pub fn debug(&mut self, message: &str) {
+        self.debugger.debug(message);
     }
 
     /// Set the flag for the negative bit.
@@ -226,11 +220,13 @@ impl Registers {
 
 #[cfg(test)]
 mod tests {
+    use crate::NoneDebugger;
+
     use super::*;
 
     #[test]
     fn test_set_flag() {
-        let mut registers = Registers::default();
+        let mut registers = Registers::<NoneDebugger>::default();
 
         registers.set_flag_negative(true);
         assert_eq!(registers.p, 0b1000_0000);
