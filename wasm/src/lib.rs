@@ -2,7 +2,7 @@ use assembler::Assembler;
 use emulator::{
     cpu::Cpu,
     memory::{memory_hexdump, Memory},
-    Debugger,
+    Cpu6502, CpuDebugger, Debugger,
 };
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
@@ -13,9 +13,25 @@ use wasm_bindgen::prelude::*;
 //     fn log(s: &str);
 // }
 
+type DebugCallBack = Box<dyn Fn(&str)>;
+
 #[wasm_bindgen]
 pub struct Emulator {
-    cpu: Cpu<Memory>,
+    cpu: Cpu6502<WasmDebugger>,
+}
+
+// #[wasm_bindgen]
+#[derive(Default)]
+struct WasmDebugger {
+    debug_callback: Option<DebugCallBack>,
+}
+
+impl Debugger for WasmDebugger {
+    fn debug(&mut self, message: &str) {
+        if let Some(debug_callback) = &self.debug_callback {
+            debug_callback(message);
+        }
+    }
 }
 
 #[wasm_bindgen]
@@ -53,13 +69,16 @@ impl Emulator {
     #[wasm_bindgen(constructor)]
     #[allow(clippy::new_without_default)]
     pub fn new() -> Self {
+        let mut cpu = Cpu6502::<WasmDebugger>::new(Memory::new());
+        cpu.debugger = WasmDebugger::default();
+
         Self {
             cpu: Cpu::default(),
         }
     }
 
     pub fn set_cpu_debug_callback(&mut self, debug_callback: Function) {
-        self.cpu.set_debug_callback(Box::new(move |msg| {
+        self.cpu.debugger.debug_callback = Some(Box::new(move |msg| {
             debug_callback
                 .call1(&JsValue::NULL, &JsValue::from_str(msg))
                 .unwrap();
@@ -67,7 +86,7 @@ impl Emulator {
     }
 
     pub fn set_memory_debug_callback(&mut self, debug_callback: Function) {
-        self.cpu.memory.set_debug_callback(Box::new(move |msg| {
+        self.cpu.memory.debugger.debug_callback = Some(Box::new(move |msg| {
             debug_callback
                 .call1(&JsValue::NULL, &JsValue::from_str(msg))
                 .unwrap();
@@ -75,7 +94,7 @@ impl Emulator {
     }
 
     pub fn set_registers_debug_callback(&mut self, debug_callback: Function) {
-        self.cpu.registers.set_debug_callback(Box::new(move |msg| {
+        self.cpu.registers.debugger.debug_callback = Some(Box::new(move |msg| {
             debug_callback
                 .call1(&JsValue::NULL, &JsValue::from_str(msg))
                 .unwrap();
