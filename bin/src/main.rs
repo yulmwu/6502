@@ -14,14 +14,13 @@ static mut DEBUG_UPDATE: bool = false;
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
-        initial_window_size: Some(Vec2::new(900., 600.)),
+        initial_window_size: Some(Vec2::new(1000., 600.)),
         ..Default::default()
     };
     // options.resizable = false;
 
     let app = App::new(
-        r#"
-BNE FOO
+        r#"BNE FOO
 LDA #$01
 STA $00
 BRK
@@ -30,11 +29,10 @@ FOO:
 LDA #$02
 STA $01
 BRK
-"#
-        .trim(),
+"#,
     );
 
-    eframe::run_native("Emulator", options, Box::new(|_| Box::new(app)))
+    eframe::run_native("6502 Emulator", options, Box::new(|_| Box::new(app)))
 }
 
 #[derive(Default)]
@@ -46,9 +44,9 @@ impl Debugger for AppDebugger {
             DEBUG_OUTPUT
                 .0
                 .push_str(Local::now().format("%H:%M:%S").to_string().as_str());
-            DEBUG_OUTPUT.0.push_str("\n");
+            DEBUG_OUTPUT.1.push('\n');
             DEBUG_OUTPUT.1.push_str(msg);
-            DEBUG_OUTPUT.1.push_str("\n");
+            DEBUG_OUTPUT.1.push('\n');
             DEBUG_UPDATE = true;
         }
     }
@@ -81,7 +79,7 @@ impl App {
 }
 
 impl eframe::App for App {
-    fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
+    fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
         ctx.request_repaint();
 
         TopBottomPanel::top("top").show(ctx, |ui| {
@@ -97,6 +95,10 @@ impl eframe::App for App {
 
                     self.emulator.reset();
                     self.emulator.load(&src);
+                }
+
+                if ui.button("reset").clicked() {
+                    self.emulator.reset();
                 }
             });
         });
@@ -162,6 +164,8 @@ impl eframe::App for App {
                             ui.add_sized(
                                 ui.available_size(),
                                 TextEdit::multiline(&mut self.source_input)
+                                    // .font(TextStyle::Monospace)
+                                    .font(FontId::new(15., FontFamily::Monospace))
                                     .text_color(Color32::WHITE),
                             );
                         });
@@ -170,17 +174,24 @@ impl eframe::App for App {
             });
 
         TopBottomPanel::top("central_top")
-            .default_height(300.)
-            .height_range(100.0..=600.)
+            .default_height(400.)
+            .height_range(100.0..=frame.info().window_info.size.y - 200.)
             .resizable(true)
             .show(ctx, |ui| {
                 memory_dump(ui, memory_hexdump(self.emulator.memory.mem, 0x0000, 0x01FF));
             });
 
         TopBottomPanel::top("central_top2").show(ctx, |ui| {
-            ui.vertical(|ui| {
-                if ui.button("test").clicked() {
-                    // self.is_open_window = true;
+            ui.horizontal(|ui| {
+                if ui.button("step").clicked() {
+                    self.emulator.step();
+                }
+
+                if ui.button("clear").clicked() {
+                    unsafe {
+                        DEBUG_OUTPUT.0.clear();
+                        DEBUG_OUTPUT.1.clear();
+                    }
                 }
             });
         });
@@ -189,26 +200,23 @@ impl eframe::App for App {
             ScrollArea::both()
                 .auto_shrink([false, false])
                 .show(ui, |ui| {
-                    ui.vertical(|ui| {
-                        ui.horizontal(|ui| {
-                            let debug = unsafe { DEBUG_OUTPUT.clone() };
-                            let time = Label::new(
-                                RichText::new(debug.0)
-                                    .monospace()
-                                    .color(Color32::LIGHT_BLUE),
-                            );
-                            let msg = Label::new(
-                                RichText::new(debug.1).monospace().color(Color32::WHITE),
-                            );
+                    ui.horizontal(|ui| {
+                        let debug = unsafe { DEBUG_OUTPUT.clone() };
+                        let time = Label::new(
+                            RichText::new(debug.0)
+                                .monospace()
+                                .color(Color32::LIGHT_BLUE),
+                        );
+                        let msg =
+                            Label::new(RichText::new(debug.1).monospace().color(Color32::WHITE));
 
-                            if unsafe { DEBUG_UPDATE } {
-                                ui.add(time);
-                                ui.add(msg).scroll_to_me(Some(Align::BOTTOM));
-                            } else {
-                                ui.add(time);
-                                ui.add(msg);
-                            }
-                        });
+                        if unsafe { DEBUG_UPDATE } {
+                            ui.add(time);
+                            ui.add(msg).scroll_to_me(Some(Align::BOTTOM));
+                        } else {
+                            ui.add(time);
+                            ui.add(msg);
+                        }
                     });
                 });
 
