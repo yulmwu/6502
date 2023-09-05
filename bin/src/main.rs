@@ -14,21 +14,23 @@ static mut DEBUG_UPDATE: bool = false;
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
-        initial_window_size: Some(Vec2::new(1000., 600.)),
+        initial_window_size: Some(Vec2::new(1000., 550.)),
         ..Default::default()
     };
     // options.resizable = false;
 
     let app = App::new(
-        r#"BNE FOO
+        r#"LDA #$02
+CMP #$01
+BNE FOO
 LDA #$01
 STA $00
 BRK
 
 FOO:
-LDA #$02
-STA $01
-BRK
+    LDA #$01
+    STA $01
+    BRK
 "#,
     );
 
@@ -44,9 +46,11 @@ impl Debugger for AppDebugger {
             DEBUG_OUTPUT
                 .0
                 .push_str(Local::now().format("%H:%M:%S").to_string().as_str());
-            DEBUG_OUTPUT.1.push('\n');
+            #[allow(clippy::single_char_add_str)]
+            DEBUG_OUTPUT.0.push_str("\n");
             DEBUG_OUTPUT.1.push_str(msg);
-            DEBUG_OUTPUT.1.push('\n');
+            #[allow(clippy::single_char_add_str)]
+            DEBUG_OUTPUT.1.push_str("\n");
             DEBUG_UPDATE = true;
         }
     }
@@ -57,6 +61,8 @@ struct App {
     emulator: Cpu6502<AppDebugger>,
     is_running: bool,
     source_input: String,
+    memory_dump_range: (u16, u16),
+    memory_dump_range_input: (String, String),
 }
 
 impl App {
@@ -74,6 +80,8 @@ impl App {
             emulator,
             is_running: false,
             source_input: program.to_string(),
+            memory_dump_range: (0x0000, 0x00FF),
+            memory_dump_range_input: ("0000".to_string(), "00FF".to_string()),
         }
     }
 }
@@ -164,7 +172,6 @@ impl eframe::App for App {
                             ui.add_sized(
                                 ui.available_size(),
                                 TextEdit::multiline(&mut self.source_input)
-                                    // .font(TextStyle::Monospace)
                                     .font(FontId::new(15., FontFamily::Monospace))
                                     .text_color(Color32::WHITE),
                             );
@@ -173,12 +180,49 @@ impl eframe::App for App {
                 });
             });
 
+        TopBottomPanel::top("central_top0").show(ctx, |ui| {
+            ui.horizontal(|ui| {
+                ui.style_mut().visuals.extreme_bg_color = Color32::default();
+                ui.add(
+                    TextEdit::singleline(&mut self.memory_dump_range_input.0)
+                        .desired_width(32.)
+                        .font(FontId::new(10., FontFamily::Monospace))
+                        .text_color(Color32::WHITE),
+                );
+                ui.add(Label::new(
+                    RichText::new(" ~ ").monospace().color(Color32::WHITE),
+                ));
+                ui.add(
+                    TextEdit::singleline(&mut self.memory_dump_range_input.1)
+                        .desired_width(32.)
+                        .font(FontId::new(10., FontFamily::Monospace))
+                        .text_color(Color32::WHITE),
+                );
+                ui.separator();
+
+                if ui.button("update").clicked() {
+                    let start = u16::from_str_radix(&self.memory_dump_range_input.0, 16);
+                    let end = u16::from_str_radix(&self.memory_dump_range_input.1, 16);
+
+                    if let (Ok(start), Ok(end)) = (start, end) {
+                        self.memory_dump_range = (start, end);
+                    } else {
+                        self.memory_dump_range_input = (
+                            format!("{:04X}", self.memory_dump_range.0),
+                            format!("{:04X}", self.memory_dump_range.1),
+                        );
+                    }
+                }
+            });
+        });
+
         TopBottomPanel::top("central_top")
-            .default_height(400.)
+            .default_height(300.)
             .height_range(100.0..=frame.info().window_info.size.y - 200.)
             .resizable(true)
             .show(ctx, |ui| {
-                memory_dump(ui, memory_hexdump(self.emulator.memory.mem, 0x0000, 0x01FF));
+                let (start, end) = self.memory_dump_range;
+                memory_dump(ui, memory_hexdump(self.emulator.memory.mem, start, end));
             });
 
         TopBottomPanel::top("central_top2").show(ctx, |ui| {
