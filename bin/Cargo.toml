@@ -9,3 +9,4 @@ edition = "2021"
 emulator = { path = "../emulator" }
 assembler = { path = "../assembler" }
 eframe = "0.22.0"
+chrono = "0.4.28"

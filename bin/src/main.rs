@@ -1,13 +1,16 @@
 use assembler::Assembler;
+use chrono::prelude::*;
 use eframe::egui;
 use egui::*;
-use emulator::{memory::Memory, Cpu6502, CpuDebugger, Debugger};
+use emulator::{
+    memory::{memory_hexdump, Memory, MemoryDumpResult},
+    registers::Registers,
+    Cpu6502, CpuDebugger, Debugger,
+};
 
-// const SIZE: f32 = 25.;
-// const RESOLUTION: usize = 10;
-// const WIDTH: f32 = SIZE * RESOLUTION as f32;
-
-static mut DEBUG_OUTPUT: String = String::new();
+/// (time, message)
+static mut DEBUG_OUTPUT: (String, String) = (String::new(), String::new());
+static mut DEBUG_UPDATE: bool = false;
 
 fn main() -> Result<(), eframe::Error> {
     let options = eframe::NativeOptions {
@@ -39,11 +42,14 @@ struct AppDebugger;
 
 impl Debugger for AppDebugger {
     fn debug(&mut self, msg: &str) {
-        println!("Debug: {}", msg);
-
         unsafe {
-            DEBUG_OUTPUT.push_str(msg);
-            DEBUG_OUTPUT.push('\n');
+            DEBUG_OUTPUT
+                .0
+                .push_str(Local::now().format("%H:%M:%S").to_string().as_str());
+            DEBUG_OUTPUT.0.push_str("\n");
+            DEBUG_OUTPUT.1.push_str(msg);
+            DEBUG_OUTPUT.1.push_str("\n");
+            DEBUG_UPDATE = true;
         }
     }
 }
@@ -78,7 +84,7 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &Context, _frame: &mut eframe::Frame) {
         ctx.request_repaint();
 
-        egui::TopBottomPanel::top("top").show(ctx, |ui| {
+        TopBottomPanel::top("top").show(ctx, |ui| {
             ui.horizontal(|ui| {
                 if ui.button("run").clicked() {
                     self.is_running = true;
@@ -95,62 +101,122 @@ impl eframe::App for App {
             });
         });
 
-        egui::TopBottomPanel::bottom("bottom").show(ctx, |ui| {
-            ui.vertical(|ui| {
-                ui.add(egui::Label::new(
-                    self.emulator
-                        .registers
-                        .to_string()
-                        .as_str()
-                        .replace('\n', " | "),
-                ));
+        TopBottomPanel::bottom("bottom").show(ctx, |ui| {
+            ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
+                ui.horizontal(|ui| {
+                    let r @ Registers {
+                        a, x, y, p, sp, pc, ..
+                    } = &self.emulator.registers;
+
+                    ui.add(Label::new(
+                        RichText::new(format!("A: {a:02X}")).strong().monospace(),
+                    ));
+                    ui.separator();
+                    ui.add(Label::new(
+                        RichText::new(format!("X: {x:02X}")).strong().monospace(),
+                    ));
+                    ui.separator();
+                    ui.add(Label::new(
+                        RichText::new(format!("Y: {y:02X}")).strong().monospace(),
+                    ));
+                    ui.separator();
+                    ui.add(Label::new(
+                        RichText::new(format!("P: {p:02X}")).strong().monospace(),
+                    ));
+                    ui.separator();
+                    ui.add(Label::new(
+                        RichText::new(format!("SP: {sp:02X}")).strong().monospace(),
+                    ));
+                    ui.separator();
+                    ui.add(Label::new(
+                        RichText::new(format!("PC: {pc:04X}")).strong().monospace(),
+                    ));
+                    ui.separator();
+                    ui.add(Label::new(
+                        RichText::new(format!(
+                            "{} {} - {}  {} {} {} {} (NV-B DIZC)",
+                            r.get_flag_negative() as u8,
+                            r.get_flag_overflow() as u8,
+                            r.get_flag_break() as u8,
+                            r.get_flag_decimal() as u8,
+                            r.get_flag_interrupt_disable() as u8,
+                            r.get_flag_zero() as u8,
+                            r.get_flag_carry() as u8
+                        ))
+                        .strong()
+                        .monospace(),
+                    ));
+                });
             });
         });
 
-        egui::SidePanel::left("left")
+        SidePanel::left("left")
             .default_width(400.)
             .width_range(100.0..=600.)
             .resizable(true)
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
+                    ScrollArea::vertical().show(ui, |ui| {
+                        ui.style_mut().visuals.extreme_bg_color = Color32::default();
                         ui.vertical_centered(|ui| {
                             ui.add_sized(
                                 ui.available_size(),
-                                TextEdit::multiline(&mut self.source_input),
+                                TextEdit::multiline(&mut self.source_input)
+                                    .text_color(Color32::WHITE),
                             );
                         });
                     });
                 });
             });
 
-        egui::TopBottomPanel::top("central_bottom")
+        TopBottomPanel::top("central_top")
             .default_height(300.)
             .height_range(100.0..=600.)
             .resizable(true)
             .show(ctx, |ui| {
-                ui.vertical_centered(|ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.add_sized(
-                            ui.available_size(),
-                            Label::new(RichText::new("Hello <b>world!</b>")),
-                        );
-                    });
-                });
+                memory_dump(ui, memory_hexdump(self.emulator.memory.mem, 0x0000, 0x01FF));
             });
 
-        egui::CentralPanel::default().show(ctx, |ui| {
-            ui.vertical_centered(|ui| {
-                egui::ScrollArea::vertical().show(ui, |ui| {
-                    ui.vertical_centered(|ui| {
-                        ui.add_sized(
-                            ui.available_size(),
-                            TextEdit::multiline(&mut unsafe { DEBUG_OUTPUT.clone() })
-                                .cursor_at_end(false),
-                        );
+        TopBottomPanel::top("central_top2").show(ctx, |ui| {
+            ui.vertical(|ui| {
+                if ui.button("test").clicked() {
+                    // self.is_open_window = true;
+                }
+            });
+        });
+
+        CentralPanel::default().show(ctx, |ui| {
+            ScrollArea::both()
+                .auto_shrink([false, false])
+                .show(ui, |ui| {
+                    ui.vertical(|ui| {
+                        ui.horizontal(|ui| {
+                            let debug = unsafe { DEBUG_OUTPUT.clone() };
+                            let time = Label::new(
+                                RichText::new(debug.0)
+                                    .monospace()
+                                    .color(Color32::LIGHT_BLUE),
+                            );
+                            let msg = Label::new(
+                                RichText::new(debug.1).monospace().color(Color32::WHITE),
+                            );
+
+                            if unsafe { DEBUG_UPDATE } {
+                                ui.add(time);
+                                ui.add(msg).scroll_to_me(Some(Align::BOTTOM));
+                            } else {
+                                ui.add(time);
+                                ui.add(msg);
+                            }
+                        });
                     });
                 });
-            });
+
+            if unsafe { DEBUG_UPDATE } {
+                unsafe {
+                    DEBUG_UPDATE = false;
+                }
+            }
         });
 
         if self.is_running {
@@ -162,112 +228,33 @@ impl eframe::App for App {
     }
 }
 
-/*
-CentralPanel::default().show(ctx, |ui| {
-            TopBottomPanel::top("toxp")
-                .resizable(false)
-                .show_inside(ui, |ui| {
-                    if ui.button("run").clicked() {
-                        self.is_running = true;
+fn memory_dump(ui: &mut Ui, dump: MemoryDumpResult) {
+    ScrollArea::both()
+        .auto_shrink([false, false])
+        .show(ui, |ui| {
+            for i in dump {
+                ui.horizontal(|ui| {
+                    ui.add(Label::new(
+                        RichText::new(format!("0x{:04X}", i.0))
+                            .strong()
+                            .color(Color32::from_rgb(50, 180, 80))
+                            .monospace(),
+                    ));
+                    ui.separator();
+                    for j in i.1 {
+                        ui.add(Label::new(RichText::new(format!(" {:02X}", j)).monospace()));
                     }
+                    ui.separator();
+                    for j in i.2 {
+                        ui.add(Label::new(
+                            RichText::new(j)
+                                .color(Color32::from_rgb(50, 180, 80))
+                                .monospace(),
+                        ));
+                    }
+                    ui.separator();
                 });
-            SidePanel::left("left")
-                .default_width(400.)
-                .resizable(true)
-                .show_inside(ui, |ui| {
-                    egui::ScrollArea::vertical().show(ui, |ui| {
-                        ui.vertical_centered_justified(|ui| {
-                            ui.add_sized(
-                                ui.available_size(),
-                                TextEdit::multiline(&mut self.source_input),
-                            )
-                        });
-                    });
-                });
-
-            CentralPanel::default().show_inside(ui, |ui| {
-                        TopBottomPanel::top("top")
-                            .resizable(true)
-                            .show_inside(ui, |ui| {
-                                ui.add_sized(
-                                    ui.available_size(),
-                                    TextEdit::multiline(&mut memory_hexdump(
-                                        self.emulator.memory.mem,
-                                        0x0000,
-                                        0x0020,
-                                    )),
-                                );
-                            })
-        });
-
-                    CentralPanel::default().show_inside(ui, |ui| {
-                        TopBottomPanel::top("2top")
-                            .resizable(true)
-                            .show_inside(ui, |ui| {
-                                egui::ScrollArea::vertical().show(ui, |ui| {
-                                    ui.vertical_centered_justified(|ui| {
-                                        ui.add_sized(
-                                            ui.available_size(),
-                                            TextEdit::multiline(
-                                                &mut self.emulator.registers.to_string(),
-                                            ),
-                                        );
-                                    });
-                                });
-                            });
-                        CentralPanel::default().show_inside(ui, |ui| {
-                            egui::ScrollArea::vertical().show(ui, |ui| {
-                                ui.vertical_centered_justified(|ui| {
-                                    ui.add_sized(
-                                        ui.available_size(),
-                                        TextEdit::multiline(&mut memory_hexdump(
-                                            self.emulator.memory.mem,
-                                            0x0000,
-                                            0xFFFF,
-                                        )),
-                                    );
-                                });
-                            });
-                        });
-                    });
-                });
-
-            if self.is_running {
-                let op = self.emulator.step();
-                if op == 0x00 {
-                    self.is_running = false;
-                }
+                ui.separator();
             }
         });
-
-*/
-
-// BNE FOO
-// LDA #$01
-// STA $00
-// BRK
-
-// FOO:
-//     LDA #$02
-//     STA $01
-//     BRK
-//     "#;
-//     let src = Assembler::new(s.to_string()).assemble().unwrap();
-//     println!("{:?}", src);
-
-//     let mut memory = Memory::new();
-//     memory.set_debug_callback(Box::new(|msg| println!("Memory Debug      : {msg}")));
-
-//     let mut emulator = Cpu::<Memory>::new(memory);
-//     emulator.set_debug_callback(Box::new(|msg| println!("CPU Debug         : {msg}")));
-//     emulator
-//         .registers
-//         .set_debug_callback(Box::new(|msg| println!("Register Debug    : {msg}")));
-
-//     emulator.reset();
-//     emulator.load(&src);
-//     emulator.execute();
-
-//     println!("{}", memory_hexdump(emulator.memory.mem, 0x0000, 0x0020));
-//     // println!("{}", memory_hexdump(&emulator.memory, 0x8000, 0x800F));
-// }
+}
