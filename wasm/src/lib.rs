@@ -1,7 +1,7 @@
 use assembler::Assembler;
 use emulator::{
     cpu::Cpu,
-    memory::{memory_hexdump, Memory},
+    memory::{memory_hexdump_string, Memory},
     Cpu6502, CpuDebugger, Debugger,
 };
 use js_sys::Function;
@@ -118,7 +118,7 @@ impl Emulator {
     }
 
     pub fn memory_hexdump(&self, start: u16, end: u16) -> String {
-        memory_hexdump(self.cpu.memory.mem, start, end)
+        memory_hexdump_string(self.cpu.memory.mem, start, end)
     }
 
     pub fn cpu_status(&self) -> String {

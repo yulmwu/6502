@@ -143,7 +143,41 @@ mod tests {
     }
 }
 
-pub fn memory_hexdump(memory: [u8; 0xFFFF], start: u16, end: u16) -> String {
+/// | 0x0000 | 00 00 .. 00 00 | ................ |
+pub type MemoryDumpResult = Vec<(u16, [u8; 16], [char; 16])>;
+
+pub fn memory_hexdump(memory: [u8; 0xFFFF], start: u16, end: u16) -> MemoryDumpResult {
+    let mut memory: Memory<NoneDebugger> = Memory {
+        mem: memory,
+        ..Default::default()
+    };
+    let mut result = Vec::new();
+
+    for addr in (start..=end).step_by(16) {
+        let mut line = ([0; 16], [' '; 16]);
+
+        for i in 0..16 {
+            if addr + i > u16::MAX - 1 {
+                break;
+            }
+            let data = memory.read(addr + i);
+
+            line.0[i as usize] = data;
+
+            if data.is_ascii_control() {
+                line.1[i as usize] = '.';
+            } else {
+                line.1[i as usize] = data as char;
+            }
+        }
+
+        result.push((addr, line.0, line.1));
+    }
+
+    result
+}
+
+pub fn memory_hexdump_string(memory: [u8; 0xFFFF], start: u16, end: u16) -> String {
     let mut memory: Memory<NoneDebugger> = Memory {
         mem: memory,
         ..Default::default()
