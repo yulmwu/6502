@@ -74,7 +74,7 @@ impl<T: Debugger> MemoryBus for Memory<T> {
 
     /// `rom` function loads the program from address `0x8000`.
     fn rom(&mut self, program: &[Self::Data]) {
-        self.debug("Load ROM");
+        self.debug(format!("Load ROM ({} bytes)", program.len()).as_str());
         self.mem[0x8000..0x8000 + program.len()].copy_from_slice(program);
     }
 
