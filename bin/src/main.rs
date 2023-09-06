@@ -9,17 +9,27 @@ fn main() -> Result<(), eframe::Error> {
     };
 
     let app = App::new(
-        r#"LDA #$02
-CMP #$01
-BNE FOO
-LDA #$01
-STA $00
-BRK
+        r#"; Source:
+; https://skilldrick.github.io/easy6502
 
-FOO:
-    LDA #$01
-    STA $01
-    BRK
+LDX #$00
+LDY #$00
+
+firstloop:
+    TXA
+    STA $0200,Y
+    PHA
+    INX
+    INY
+    CPY #$10
+    BNE firstloop
+
+secondloop:
+    PLA
+    STA $0200,Y
+    INY
+    CPY #$20
+    BNE secondloop
 "#,
     );
 

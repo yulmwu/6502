@@ -11,6 +11,11 @@ impl View for MenuBar {
                 app.is_running = true;
             }
 
+            if ui.button("halt").clicked() {
+                app.is_running = false;
+                app.emulator.debug("Halted");
+            }
+
             if ui.button("load").clicked() {
                 let src = Assembler::new(app.source_input.clone()).assemble().unwrap();
 
@@ -20,10 +25,6 @@ impl View for MenuBar {
 
             if ui.button("reset").clicked() {
                 app.emulator.reset();
-            }
-
-            if ui.button("display").clicked() {
-                app.is_display_open = true;
             }
         });
     }

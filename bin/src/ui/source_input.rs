@@ -12,6 +12,7 @@ impl View for SourceInput {
                     ui.add_sized(
                         ui.available_size(),
                         TextEdit::multiline(&mut app.source_input)
+                            .code_editor()
                             .font(FontId::new(15., FontFamily::Monospace))
                             .text_color(Color32::WHITE),
                     );
