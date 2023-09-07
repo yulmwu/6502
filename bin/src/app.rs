@@ -62,7 +62,7 @@ impl App {
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
-        ctx.request_repaint();
+        // ctx.request_repaint();
 
         Window::new("Display")
             .open(&mut true)
