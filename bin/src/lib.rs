@@ -1,10 +1,12 @@
 use eframe::egui;
+use emulator::DebugKind;
 
 pub mod app;
 pub mod ui;
 
-/// (time, message)
-pub static mut DEBUG_OUTPUT: (String, String) = (String::new(), String::new());
+/// (time, message, kind)
+pub static mut DEBUG_OUTPUT: (String, String, DebugKind) =
+    (String::new(), String::new(), DebugKind::Info);
 pub static mut DEBUG_UPDATE: bool = false;
 
 pub trait View {

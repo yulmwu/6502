@@ -1,6 +1,6 @@
 use crate::{app::App, View, DEBUG_OUTPUT, DEBUG_UPDATE};
 use eframe::egui::*;
-use emulator::CpuDebugger;
+use emulator::{CpuDebugger, DebugKind};
 
 pub struct DebuggerUi;
 
@@ -35,7 +35,12 @@ impl View for DebuggerOutput {
                             .monospace()
                             .color(Color32::LIGHT_BLUE),
                     );
-                    let msg = Label::new(RichText::new(debug.1).monospace().color(Color32::WHITE));
+                    let color = match debug.2 {
+                        DebugKind::Info => Color32::WHITE,
+                        DebugKind::Warn => Color32::YELLOW,
+                        DebugKind::Error => Color32::RED,
+                    };
+                    let msg = Label::new(RichText::new(debug.1).monospace().color(color));
 
                     if unsafe { DEBUG_UPDATE } {
                         ui.add(time);
