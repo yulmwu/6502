@@ -30,6 +30,7 @@ pub struct App {
     pub source_input: String,
     pub memory_dump_range: (u16, u16),
     pub memory_dump_range_input: (String, String),
+    pub error: Option<String>,
 }
 
 impl App {
@@ -49,6 +50,7 @@ impl App {
             source_input: program.to_string(),
             memory_dump_range: (0x0000, 0x00FF),
             memory_dump_range_input: ("0000".to_string(), "00FF".to_string()),
+            error: None,
         }
     }
 }
@@ -57,13 +59,10 @@ impl eframe::App for App {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
         ctx.request_repaint();
 
-        TopBottomPanel::top("menu_bar").show(ctx, |ui| MenuBar.ui(ui, self));
-
-        TopBottomPanel::bottom("status_bar").show(ctx, |ui| StatusBar.ui(ui, self));
-
-        SidePanel::left("bottom2")
-            .default_width(100.)
-            .resizable(true)
+        Window::new("Display")
+            .open(&mut true)
+            .default_width(150.)
+            .resizable(false)
             .show(ctx, |ui| {
                 ui.vertical_centered(|ui| {
                     let width = 32.;
@@ -106,6 +105,10 @@ impl eframe::App for App {
                     ui.image(&texture, Vec2::new(width * 5., height * 5.));
                 });
             });
+
+        TopBottomPanel::top("menu_bar").show(ctx, |ui| MenuBar.ui(ui, self));
+
+        TopBottomPanel::bottom("status_bar").show(ctx, |ui| StatusBar.ui(ui, self));
 
         SidePanel::left("source_input")
             .default_width(400.)

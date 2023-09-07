@@ -17,7 +17,13 @@ impl View for MenuBar {
             }
 
             if ui.button("load").clicked() {
-                let src = Assembler::new(app.source_input.clone()).assemble().unwrap();
+                let src = match Assembler::new(app.source_input.clone()).assemble() {
+                    Ok(src) => src,
+                    Err(e) => {
+                        app.error = Some(e.to_string());
+                        return;
+                    }
+                };
 
                 app.emulator.reset();
                 app.emulator.load(&src);
