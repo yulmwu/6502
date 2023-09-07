@@ -2,7 +2,7 @@ use assembler::Assembler;
 use emulator::{
     cpu::Cpu,
     memory::{memory_hexdump_string, Memory},
-    Cpu6502, CpuDebugger, Debugger,
+    Cpu6502, CpuDebugger, DebugKind, Debugger,
 };
 use js_sys::Function;
 use wasm_bindgen::prelude::*;
@@ -27,7 +27,7 @@ struct WasmDebugger {
 }
 
 impl Debugger for WasmDebugger {
-    fn debug(&mut self, message: &str) {
+    fn debug(&mut self, message: &str, _: DebugKind) {
         if let Some(debug_callback) = &self.debug_callback {
             debug_callback(message);
         }
