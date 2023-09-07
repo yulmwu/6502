@@ -17,7 +17,7 @@ fn identifier(text: &mut Lexer<TokenKind>) -> Option<String> {
 }
 
 #[derive(Logos, Debug, PartialEq, Clone)]
-#[logos(skip r"[ \t\f]+")]
+#[logos(skip r"[ \t\f]+", error=String)]
 #[rustfmt::skip]
 pub enum TokenKind {
     #[token("(")] LParen,

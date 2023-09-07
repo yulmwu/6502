@@ -1,4 +1,4 @@
-use crate::{AssemblerError, AssemblerResult};
+use crate::{AssemblerError, AssemblerErrorKind, AssemblerResult};
 
 macro_rules! enum_mnemonics {
     ($($ident:ident),*) => {
@@ -12,7 +12,7 @@ macro_rules! enum_mnemonics {
             pub fn to_mnemonics(s: &str) -> AssemblerResult<Self> {
                 Ok(match s.to_uppercase().as_str() {
                     $(stringify!($ident) => Mnemonics::$ident,)*
-                    _ => return Err(AssemblerError::InvalidMnemonic(s.to_string())),
+                    _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidMnemonic(s.to_string()))),
                 })
             }
         }
@@ -325,10 +325,10 @@ pub fn instruction_to_byte(
         // TYA
         (TYA, IMPACC) => 0x98,
         _ => {
-            return Err(AssemblerError::InvalidInstruction(
+            return Err(AssemblerError::new(AssemblerErrorKind::InvalidInstruction(
                 mnemonic.to_string(),
                 addressing_mode,
-            ))
+            )))
         }
     })
 }

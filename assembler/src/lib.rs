@@ -12,36 +12,68 @@ use logos::Logos;
 use std::{collections::HashMap, fmt};
 
 #[derive(Debug)]
-pub enum AssemblerError {
+pub enum AssemblerErrorKind {
     UnexpectedToken {
         expected: TokenKind,
         found: TokenKind,
     },
+    UnexpectedToken2,
     InvalidOperand,
-    InvalidLabel,
+    InvalidLabel(String),
     InvalidInstruction(String, AddressingMode),
     InvalidMnemonic(String),
 }
 
-impl fmt::Display for AssemblerError {
+impl fmt::Display for AssemblerErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AssemblerError::UnexpectedToken { expected, found } => write!(
+            AssemblerErrorKind::UnexpectedToken { expected, found } => write!(
                 f,
                 "Unexpected token: expected {:?}, found {:?}",
                 expected, found
             ),
-            AssemblerError::InvalidOperand => write!(f, "Invalid operand"),
-            AssemblerError::InvalidLabel => write!(f, "Invalid label"),
-            AssemblerError::InvalidInstruction(mnemonic, addressing_mode) => write!(
+            AssemblerErrorKind::UnexpectedToken2 => write!(f, "Unexpected token"),
+            AssemblerErrorKind::InvalidOperand => write!(f, "Invalid operand"),
+            AssemblerErrorKind::InvalidLabel(label) => write!(f, "Invalid label: {}", label),
+            AssemblerErrorKind::InvalidInstruction(mnemonic, addressing_mode) => write!(
                 f,
                 "Invalid instruction: mnemonic {:?} does not support {:?} addressing mode",
                 mnemonic, addressing_mode
             ),
-            AssemblerError::InvalidMnemonic(mnemonic) => {
+            AssemblerErrorKind::InvalidMnemonic(mnemonic) => {
                 write!(f, "Invalid mnemonic: {:?}", mnemonic)
             }
         }
+    }
+}
+
+#[derive(Debug)]
+pub struct AssemblerError {
+    pub kind: AssemblerErrorKind,
+    pub position: Option<(usize, usize)>,
+}
+
+impl AssemblerError {
+    pub fn new(kind: AssemblerErrorKind) -> Self {
+        Self {
+            kind,
+            position: None,
+        }
+    }
+
+    pub fn pos(mut self, position: (usize, usize)) -> Self {
+        self.position = Some(position);
+        self
+    }
+}
+
+impl fmt::Display for AssemblerError {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(f, "{}", self.kind)?;
+        if let Some((line, column)) = self.position {
+            write!(f, " at line {}, column {}", line, column)?;
+        }
+        Ok(())
     }
 }
 
@@ -64,7 +96,7 @@ impl Assembler {
 
     pub fn assemble(&mut self) -> AssemblerResult<Vec<u8>> {
         let lexer = TokenKind::lexer(&self.source);
-        let mut parser = Parser::new(lexer);
+        let mut parser = Parser::new(lexer)?;
         let p = parser.parse()?;
 
         let mut bytes = Vec::new();
@@ -130,7 +162,7 @@ impl Assembler {
                     let label_address = self
                         .labels
                         .get(&label)
-                        .ok_or(AssemblerError::InvalidLabel)?;
+                        .ok_or(AssemblerError::new(AssemblerErrorKind::InvalidLabel(label)))?;
 
                     // Absolute addressing
                     if opcode == Mnemonics::JMP {
