@@ -1,11 +1,10 @@
-use std::fmt;
-
 use crate::{
     addressing_mode::AddressingMode,
     memory::{MemoryBus, STACK_BASE},
     registers::Registers,
-    CpuDebugger, Debugger, NoneDebugger,
+    CpuDebugger, DebugKind, Debugger, NoneDebugger,
 };
+use std::fmt;
 
 #[doc=include_str!("../../../README.md")]
 #[derive(Default)]
@@ -48,7 +47,7 @@ where
     }
 
     pub fn debug(&mut self, message: &str) {
-        self.debugger.debug(message);
+        self.debugger.debug(message, DebugKind::Info);
     }
 
     pub fn reset(&mut self) {
@@ -288,7 +287,10 @@ where
             /* TYA */ 0x98 => self.tya(),
 
             /* BRK */ 0x00 => {}
-            _ => todo!("opcode {:02X} not implemented", opcode),
+            /* NOP */
+            _ => self
+                .debugger
+                .debug(&format!("Unknown opcode: 0x{:02X}", opcode), DebugKind::Warn),
         }
     }
 

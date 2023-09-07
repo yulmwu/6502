@@ -1,5 +1,12 @@
+#[derive(Clone, Copy)]
+pub enum DebugKind {
+    Info,
+    Warn,
+    Error,
+}
+
 pub trait Debugger: Default {
-    fn debug(&mut self, message: &str);
+    fn debug(&mut self, message: &str, kind: DebugKind);
 }
 
 pub trait CpuDebugger {
@@ -10,5 +17,5 @@ pub trait CpuDebugger {
 pub struct NoneDebugger;
 
 impl Debugger for NoneDebugger {
-    fn debug(&mut self, _: &str) {}
+    fn debug(&mut self, _: &str, _: DebugKind) {}
 }

@@ -1,6 +1,5 @@
+use crate::{DebugKind, Debugger};
 use std::fmt;
-
-use crate::Debugger;
 
 /// # Registers
 ///
@@ -80,7 +79,7 @@ impl<T: Debugger> Registers<T> {
     }
 
     pub fn debug(&mut self, message: &str) {
-        self.debugger.debug(message);
+        self.debugger.debug(message, DebugKind::Info);
     }
 
     /// Set the flag for the negative bit.

@@ -1,4 +1,4 @@
-use crate::{Debugger, NoneDebugger};
+use crate::{Debugger, NoneDebugger, DebugKind};
 
 pub const STACK_BASE: u16 = 0x0100;
 
@@ -41,7 +41,7 @@ impl<T: Debugger> Memory<T> {
     }
 
     fn debug(&mut self, message: &str) {
-        self.debugger.debug(message);
+        self.debugger.debug(message, DebugKind::Info);
     }
 }
 
