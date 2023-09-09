@@ -26,6 +26,38 @@ impl Debugger for AppDebugger {
     }
 }
 
+pub struct Settings {
+    pub panel_ui: bool,
+    pub reactive_mode: bool,
+}
+
+impl Default for Settings {
+    fn default() -> Self {
+        Self {
+            panel_ui: true,
+            reactive_mode: true,
+        }
+    }
+}
+
+pub struct WindowVisibility {
+    pub display: bool,
+    pub source: bool,
+    pub memory_dump: bool,
+    pub debugger: bool,
+}
+
+impl Default for WindowVisibility {
+    fn default() -> Self {
+        Self {
+            display: true,
+            source: true,
+            memory_dump: true,
+            debugger: true,
+        }
+    }
+}
+
 #[derive(Default)]
 pub struct App {
     pub emulator: Cpu6502<AppDebugger>,
@@ -35,6 +67,8 @@ pub struct App {
     pub memory_dump_range_input: (String, String),
     pub error: Option<String>,
     pub key_input: String,
+    pub settings: Settings,
+    pub window_visibility: WindowVisibility,
 }
 
 impl App {
@@ -56,41 +90,108 @@ impl App {
             memory_dump_range_input: ("0000".to_string(), "00FF".to_string()),
             error: None,
             key_input: String::new(),
+            ..Default::default()
         }
     }
 }
 
 impl eframe::App for App {
     fn update(&mut self, ctx: &Context, frame: &mut eframe::Frame) {
-        // ctx.request_repaint();
-
-        Window::new("Display")
-            .open(&mut true)
-            .default_width(150.)
-            .resizable(false)
-            .show(ctx, |ui| Display.ui(ui, self));
+        if !self.settings.reactive_mode {
+            ctx.request_repaint();
+        }
 
         TopBottomPanel::top("menu_bar").show(ctx, |ui| MenuBar.ui(ui, self));
-
         TopBottomPanel::bottom("status_bar").show(ctx, |ui| StatusBar.ui(ui, self));
 
-        SidePanel::left("source_input")
-            .default_width(400.)
-            .width_range(100.0..=600.)
-            .resizable(true)
-            .show(ctx, |ui| SourceInput.ui(ui, self));
+        if self.settings.panel_ui {
+            SidePanel::left("display_settings")
+                .default_width(150.)
+                .width_range(100.0..=300.)
+                .resizable(true)
+                .show(ctx, |ui| {
+                    if self.window_visibility.display {
+                        Display.ui(ui, self);
+                        ui.separator();
+                    }
+                    SettingsUi.ui(ui, self);
+                });
 
-        TopBottomPanel::top("memory_dump_option").show(ctx, |ui| MemoryDumpOptions.ui(ui, self));
+            if self.window_visibility.source {
+                SidePanel::left("source_input")
+                    .default_width(400.)
+                    .width_range(100.0..=600.)
+                    .resizable(true)
+                    .show(ctx, |ui| SourceInput.ui(ui, self));
+            }
 
-        TopBottomPanel::top("memory_dump")
-            .default_height(300.)
-            .height_range(100.0..=frame.info().window_info.size.y - 200.)
-            .resizable(true)
-            .show(ctx, |ui| MemoryDump.ui(ui, self));
+            if self.window_visibility.memory_dump {
+                TopBottomPanel::top("memory_dump_option")
+                    .show(ctx, |ui| MemoryDumpOptions.ui(ui, self));
+                if self.window_visibility.debugger {
+                    TopBottomPanel::top("memory_dump")
+                        .default_height(300.)
+                        .height_range(100.0..=frame.info().window_info.size.y - 200.)
+                        .resizable(true)
+                        .show(ctx, |ui| MemoryDump.ui(ui, self));
+                } else {
+                    CentralPanel::default().show(ctx, |ui| MemoryDump.ui(ui, self));
+                }
+            }
 
-        TopBottomPanel::top("debugger_ui").show(ctx, |ui| DebuggerUi.ui(ui, self));
+            if self.window_visibility.debugger {
+                TopBottomPanel::top("debugger_ui").show(ctx, |ui| DebuggerUi.ui(ui, self));
+                CentralPanel::default().show(ctx, |ui| DebuggerOutput.ui(ui, self));
+            } else {
+                CentralPanel::default().show(ctx, |ui| MemoryDump.ui(ui, self));
+            }
+        } else {
+            CentralPanel::default().show(ctx, |_| {});
 
-        CentralPanel::default().show(ctx, |ui| DebuggerOutput.ui(ui, self));
+            if self.window_visibility.display {
+                Window::new("Display")
+                    .default_width(160.)
+                    .resizable(false)
+                    .show(ctx, |ui| Display.ui(ui, self));
+            }
+
+            Window::new("Settings")
+                .default_width(300.)
+                .resizable(true)
+                .show(ctx, |ui| SettingsUi.ui(ui, self));
+
+            if self.window_visibility.source {
+                Window::new("Source")
+                    .default_width(400.)
+                    .default_height(450.)
+                    .resizable(true)
+                    .show(ctx, |ui| SourceInput.ui(ui, self));
+            }
+
+            if self.window_visibility.memory_dump {
+                Window::new("Memory Dump")
+                    .default_width(300.)
+                    .default_height(200.)
+                    .resizable(true)
+                    .show(ctx, |ui| {
+                        MemoryDumpOptions.ui(ui, self);
+                        ui.separator();
+                        MemoryDump.ui(ui, self);
+                    });
+            }
+
+            if self.window_visibility.debugger {
+                Window::new("Debugger")
+                    .default_width(300.)
+                    .default_height(200.)
+                    .resizable(true)
+                    .show(ctx, |ui| {
+                        DebuggerUi.ui(ui, self);
+                        ui.separator();
+                        DebuggerOutput.ui(ui, self);
+                    });
+            }
+        }
 
         if self.is_running {
             let op = self.emulator.step();
