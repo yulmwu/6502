@@ -1,46 +1,51 @@
 use crate::{
-    AddressingMode, AssemblerError, AssemblerErrorKind, AssemblerResult, Instruction, Mnemonics,
-    NumberType, Operand, OperandData, Program, Statement, TokenKind,
+    lexer::Lexer, AddressingMode, AssemblerError, AssemblerErrorKind, AssemblerResult, Instruction,
+    Mnemonics, NumberType, Operand, OperandData, Position, Program, Statement, Token, TokenKind,
 };
-use logos::Lexer;
 
 #[derive(Debug)]
 pub struct Parser<'a> {
-    pub lexer: Lexer<'a, TokenKind>,
-    current_token: TokenKind,
-    peek_token: TokenKind,
+    pub lexer: Lexer<'a>,
+    current_token: Token<'a>,
+    peek_token: Token<'a>,
+    position: Position,
 }
 
 impl<'a> Parser<'a> {
-    pub fn new(lexer: Lexer<'a, TokenKind>) -> AssemblerResult<Self> {
+    pub fn new(lexer: Lexer<'a>) -> Self {
         let mut parser = Self {
             lexer,
-            current_token: TokenKind::EOF,
-            peek_token: TokenKind::EOF,
+            current_token: Token::default(),
+            peek_token: Token::default(),
+            position: Position::default(),
         };
-        parser.next_token()?;
-        parser.next_token()?;
-        Ok(parser)
+        parser.next_token().unwrap();
+        parser.next_token().unwrap();
+
+        parser
     }
 
     fn next_token(&mut self) -> AssemblerResult<()> {
-        self.current_token = self.peek_token.clone();
-        self.peek_token = match self.lexer.next().transpose() {
-            Ok(token) => token.unwrap_or(TokenKind::EOF),
-            Err(_) => return Err(AssemblerError::new(AssemblerErrorKind::UnexpectedToken2)),
-        };
+        self.current_token = self.peek_token;
+        self.peek_token = self.lexer.next_token()?;
+
+        self.position = self.current_token.position;
+
         Ok(())
     }
 
-    fn expected(&mut self, expected: TokenKind) -> AssemblerResult<()> {
-        Err(AssemblerError::new(AssemblerErrorKind::UnexpectedToken {
-            expected,
-            found: self.current_token.clone(),
-        }))
+    fn expected(&mut self, expected: &TokenKind) -> AssemblerResult<()> {
+        Err(AssemblerError::new(
+            AssemblerErrorKind::UnexpectedToken {
+                expected: expected.to_string(),
+                found: self.current_token.kind.to_string(),
+            },
+            self.position,
+        ))
     }
 
-    fn expect_token(&mut self, token: TokenKind) -> AssemblerResult<()> {
-        if self.current_token == token {
+    fn expect_token(&mut self, token: &TokenKind) -> AssemblerResult<()> {
+        if self.current_token.kind == *token {
             self.next_token()?;
             Ok(())
         } else {
@@ -51,13 +56,13 @@ impl<'a> Parser<'a> {
     pub fn parse(&mut self) -> AssemblerResult<Program> {
         let mut program = Program::default();
 
-        while self.current_token != TokenKind::EOF {
-            match self.current_token.clone() {
+        while self.current_token.kind != TokenKind::EOF {
+            match self.current_token.kind {
                 TokenKind::Identifier(identifier) => {
                     let statement = self.parse_identifier(identifier)?;
                     program.0.push(statement);
 
-                    if self.current_token == TokenKind::Newline {
+                    if self.current_token.kind == TokenKind::Newline {
                         self.next_token()?;
                     }
                 }
@@ -65,10 +70,13 @@ impl<'a> Parser<'a> {
                     self.next_token()?;
                 }
                 _ => {
-                    return Err(AssemblerError::new(AssemblerErrorKind::UnexpectedToken {
-                        expected: TokenKind::Identifier(String::new()),
-                        found: self.current_token.clone(),
-                    }))
+                    return Err(AssemblerError::new(
+                        AssemblerErrorKind::UnexpectedToken {
+                            expected: TokenKind::Identifier("identifier").to_string(),
+                            found: self.current_token.kind.to_string(),
+                        },
+                        self.position,
+                    ))
                 }
             }
         }
@@ -76,19 +84,20 @@ impl<'a> Parser<'a> {
         Ok(program)
     }
 
-    fn parse_identifier(&mut self, identifier: String) -> AssemblerResult<Statement> {
-        Ok(if self.peek_token == TokenKind::Colon {
+    fn parse_identifier(&mut self, identifier: &'a str) -> AssemblerResult<Statement> {
+        Ok(if self.peek_token.kind == TokenKind::Colon {
             self.next_token()?;
             self.next_token()?;
-            Statement::Label(identifier)
+            Statement::Label(identifier.to_string())
         } else {
-            let instruction = Mnemonics::to_mnemonics(identifier.as_str())?;
+            let instruction = Mnemonics::to_mnemonics(identifier, self.position)?;
             self.next_token()?;
             let operand = self.parse_operand()?;
 
             Statement::Instruction(Instruction {
                 opcode: instruction,
                 operand,
+                position: self.position,
             })
         })
     }
@@ -110,13 +119,16 @@ impl<'a> Parser<'a> {
     REL BNE $00 ($00 is the operand) -+--> RELZPG
     */
     fn parse_operand(&mut self) -> AssemblerResult<Operand> {
-        Ok(match self.current_token.clone() {
+        Ok(match self.current_token.kind {
             TokenKind::Hash => {
                 self.next_token()?;
                 let operand_data = self.parse_operand_data()?;
 
                 if !operand_data.is_8() {
-                    return Err(AssemblerError::new(AssemblerErrorKind::InvalidOperand));
+                    return Err(AssemblerError::new(
+                        AssemblerErrorKind::InvalidOperand(operand_data.to_string()),
+                        self.position,
+                    ));
                 }
 
                 self.next_token()?;
@@ -158,16 +170,21 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Identifier(identifier) => {
                 self.next_token()?;
-                let operand_data = OperandData::Label(identifier);
+                let operand_data = OperandData::Label(identifier.to_string());
                 Operand::new(AddressingMode::RELZPG, Some(operand_data))
             }
             TokenKind::EOF | TokenKind::Newline => Operand::new(AddressingMode::IMPACC, None),
-            _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidOperand)),
+            _ => {
+                return Err(AssemblerError::new(
+                    AssemblerErrorKind::InvalidOperand(self.current_token.kind.to_string()),
+                    self.position,
+                ))
+            }
         })
     }
 
     fn parse_operand_data(&mut self) -> AssemblerResult<OperandData> {
-        Ok(match self.current_token.clone() {
+        Ok(match self.current_token.kind {
             TokenKind::Decimal(number) => {
                 if number > 255 {
                     OperandData::Number(NumberType::Decimal16(number))
@@ -181,15 +198,20 @@ impl<'a> Parser<'a> {
             TokenKind::Hexadecimal16Bit(number) => {
                 OperandData::Number(NumberType::Hexadecimal16(number))
             }
-            TokenKind::Identifier(identifier) => OperandData::Label(identifier),
-            _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidOperand)),
+            TokenKind::Identifier(identifier) => OperandData::Label(identifier.to_string()),
+            _ => {
+                return Err(AssemblerError::new(
+                    AssemblerErrorKind::InvalidOperand(self.current_token.kind.to_string()),
+                    self.position,
+                ))
+            }
         })
     }
 
     fn parse_8bit_operand_comma(&mut self, operand_data: OperandData) -> AssemblerResult<Operand> {
-        Ok(if let TokenKind::Comma = self.current_token.clone() {
+        Ok(if let TokenKind::Comma = self.current_token.kind {
             self.next_token()?;
-            match self.current_token.clone() {
+            match self.current_token.kind {
                 TokenKind::X => {
                     self.next_token()?;
                     // $00,X
@@ -200,7 +222,12 @@ impl<'a> Parser<'a> {
                     // $00,Y
                     Operand::new(AddressingMode::ZPY, Some(operand_data))
                 }
-                _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidOperand)),
+                _ => {
+                    return Err(AssemblerError::new(
+                        AssemblerErrorKind::InvalidOperand(operand_data.to_string()),
+                        self.position,
+                    ))
+                }
             }
         } else {
             Operand::new(AddressingMode::RELZPG, Some(operand_data))
@@ -208,9 +235,9 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_16bit_operand_comma(&mut self, operand_data: OperandData) -> AssemblerResult<Operand> {
-        Ok(if let TokenKind::Comma = self.current_token.clone() {
+        Ok(if let TokenKind::Comma = self.current_token.kind {
             self.next_token()?;
-            match self.current_token.clone() {
+            match self.current_token.kind {
                 TokenKind::X => {
                     self.next_token()?;
                     // $0000,X
@@ -221,7 +248,12 @@ impl<'a> Parser<'a> {
                     // $0000,Y
                     Operand::new(AddressingMode::ABY, Some(operand_data))
                 }
-                _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidOperand)),
+                _ => {
+                    return Err(AssemblerError::new(
+                        AssemblerErrorKind::InvalidOperand(operand_data.to_string()),
+                        self.position,
+                    ))
+                }
             }
         } else {
             Operand::new(AddressingMode::ABS, Some(operand_data))
@@ -229,46 +261,57 @@ impl<'a> Parser<'a> {
     }
 
     fn parse_operand_lparen(&mut self, operand_data: OperandData) -> AssemblerResult<Operand> {
-        Ok(match self.current_token.clone() {
+        Ok(match self.current_token.kind {
             TokenKind::Comma => {
                 // ($0000,
                 self.next_token()?;
 
-                self.expect_token(TokenKind::X)?; // ($00,X
+                self.expect_token(&TokenKind::X)?; // ($00,X
 
-                if let TokenKind::RParen = self.current_token.clone() {
+                if let TokenKind::RParen = self.current_token.kind {
                     self.next_token()?;
                     Operand::new(AddressingMode::IDX, Some(operand_data))
                     // TODO: later check if the operand is 8 bit
                 } else {
-                    return Err(AssemblerError::new(AssemblerErrorKind::UnexpectedToken {
-                        expected: TokenKind::RParen,
-                        found: self.current_token.clone(),
-                    }));
+                    return Err(AssemblerError::new(
+                        AssemblerErrorKind::UnexpectedToken {
+                            expected: TokenKind::RParen.to_string(),
+                            found: self.current_token.kind.to_string(),
+                        },
+                        self.position,
+                    ));
                 }
             }
             TokenKind::RParen => {
                 self.next_token()?;
 
                 // ($0000),
-                if let TokenKind::Comma = self.current_token.clone() {
+                if let TokenKind::Comma = self.current_token.kind {
                     self.next_token()?;
-                    if let TokenKind::Y = self.current_token.clone() {
+                    if let TokenKind::Y = self.current_token.kind {
                         self.next_token()?;
                         // ($00),Y
                         Operand::new(AddressingMode::IDY, Some(operand_data))
                         // TODO: later check if the operand is 8 bit
                     } else {
-                        return Err(AssemblerError::new(AssemblerErrorKind::UnexpectedToken {
-                            expected: TokenKind::Y,
-                            found: self.current_token.clone(),
-                        }));
+                        return Err(AssemblerError::new(
+                            AssemblerErrorKind::UnexpectedToken {
+                                expected: TokenKind::Y.to_string(),
+                                found: self.current_token.kind.to_string(),
+                            },
+                            self.position,
+                        ));
                     }
                 } else {
                     Operand::new(AddressingMode::IND, Some(operand_data))
                 }
             }
-            _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidOperand)),
+            _ => {
+                return Err(AssemblerError::new(
+                    AssemblerErrorKind::InvalidOperand(operand_data.to_string()),
+                    self.position,
+                ))
+            }
         })
     }
 }
@@ -276,16 +319,16 @@ impl<'a> Parser<'a> {
 #[cfg(test)]
 mod tests {
     use crate::{
+        lexer::Lexer,
         AddressingMode::{self, *},
         Instruction,
         Mnemonics::{self, *},
-        NumberType, Operand, OperandData, Parser, Statement,
+        NumberType, Operand, OperandData, Parser, Position, Statement,
     };
-    use logos::Lexer;
 
     fn test_parse_instruction(input: &str, expected: Instruction) {
         let lexer = Lexer::new(input);
-        let mut parser = Parser::new(lexer).unwrap();
+        let mut parser = Parser::new(lexer);
         let instruction = parser.parse().unwrap().0;
 
         assert_eq!(instruction[0], Statement::Instruction(expected));
@@ -305,6 +348,7 @@ mod tests {
                     None => None,
                 },
             ),
+            Position::default(),
         )
     }
 

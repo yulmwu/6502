@@ -6,19 +6,17 @@ mod tokenizer;
 pub use ast::*;
 pub use instruction::*;
 pub use parser::*;
-pub use tokenizer::*;
-
-use logos::Logos;
 use std::{collections::HashMap, fmt};
+use tokenizer::lexer::Lexer;
+pub use tokenizer::*;
 
 #[derive(Debug)]
 pub enum AssemblerErrorKind {
-    UnexpectedToken {
-        expected: TokenKind,
-        found: TokenKind,
-    },
+    IllegalCharacter(char),
+    InvalidNumber,
+    UnexpectedToken { expected: String, found: String },
     UnexpectedToken2,
-    InvalidOperand,
+    InvalidOperand(String),
     InvalidLabel(String),
     InvalidInstruction(String, AddressingMode),
     InvalidMnemonic(String),
@@ -27,22 +25,14 @@ pub enum AssemblerErrorKind {
 impl fmt::Display for AssemblerErrorKind {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            AssemblerErrorKind::UnexpectedToken { expected, found } => write!(
-                f,
-                "Unexpected token: expected {:?}, found {:?}",
-                expected, found
-            ),
+            AssemblerErrorKind::IllegalCharacter(c) => write!(f, "Illegal character: {}", c),
+            AssemblerErrorKind::InvalidNumber => write!(f, "Invalid number"),
+            AssemblerErrorKind::UnexpectedToken { expected, found } => write!(f, "Unexpected token: expected {expected:?}, found {found:?}"),
             AssemblerErrorKind::UnexpectedToken2 => write!(f, "Unexpected token"),
-            AssemblerErrorKind::InvalidOperand => write!(f, "Invalid operand"),
-            AssemblerErrorKind::InvalidLabel(label) => write!(f, "Invalid label: {}", label),
-            AssemblerErrorKind::InvalidInstruction(mnemonic, addressing_mode) => write!(
-                f,
-                "Invalid instruction: mnemonic {:?} does not support {:?} addressing mode",
-                mnemonic, addressing_mode
-            ),
-            AssemblerErrorKind::InvalidMnemonic(mnemonic) => {
-                write!(f, "Invalid mnemonic: {:?}", mnemonic)
-            }
+            AssemblerErrorKind::InvalidOperand(operand) => write!(f, "Invalid operand: {operand}"),
+            AssemblerErrorKind::InvalidLabel(label) => write!(f, "Invalid label: {label}",),
+            AssemblerErrorKind::InvalidInstruction(mnemonic, addressing_mode) => write!(f, "Invalid instruction: mnemonic {mnemonic:?} does not support {addressing_mode:?} addressing mode"),
+            AssemblerErrorKind::InvalidMnemonic(mnemonic) => write!(f, "Invalid mnemonic: {mnemonic:?}")
         }
     }
 }
@@ -50,43 +40,34 @@ impl fmt::Display for AssemblerErrorKind {
 #[derive(Debug)]
 pub struct AssemblerError {
     pub kind: AssemblerErrorKind,
-    pub position: Option<(usize, usize)>,
+    pub position: Position,
 }
 
 impl AssemblerError {
-    pub fn new(kind: AssemblerErrorKind) -> Self {
-        Self {
-            kind,
-            position: None,
-        }
-    }
-
-    pub fn pos(mut self, position: (usize, usize)) -> Self {
-        self.position = Some(position);
-        self
+    pub fn new(kind: AssemblerErrorKind, position: Position) -> Self {
+        Self { kind, position }
     }
 }
 
 impl fmt::Display for AssemblerError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         write!(f, "{}", self.kind)?;
-        if let Some((line, column)) = self.position {
-            write!(f, " at line {}, column {}", line, column)?;
-        }
+        let Position(line, column) = self.position;
+        write!(f, " at line {}, column {}", line, column)?;
         Ok(())
     }
 }
 
 pub type AssemblerResult<T> = Result<T, AssemblerError>;
 
-pub struct Assembler {
-    pub source: String,
+pub struct Assembler<'a> {
+    pub source: &'a str,
     pointer: usize,
     labels: HashMap<String, u16>,
 }
 
-impl Assembler {
-    pub fn new(source: String) -> Self {
+impl<'a> Assembler<'a> {
+    pub fn new(source: &'a str) -> Self {
         Self {
             source,
             pointer: 0,
@@ -95,8 +76,8 @@ impl Assembler {
     }
 
     pub fn assemble(&mut self) -> AssemblerResult<Vec<u8>> {
-        let lexer = TokenKind::lexer(&self.source);
-        let mut parser = Parser::new(lexer)?;
+        let lexer = Lexer::new(self.source);
+        let mut parser = Parser::new(lexer);
         let p = parser.parse()?;
 
         let mut bytes = Vec::new();
@@ -110,6 +91,7 @@ impl Assembler {
                     let Instruction {
                         opcode: _,
                         operand: Operand { value, .. },
+                        position: _,
                     } = instruction;
 
                     if let Some(value) = value {
@@ -147,8 +129,9 @@ impl Assembler {
                 addressing_mode,
                 value,
             },
+            position,
         } = instruction;
-        let mut bytes = vec![instruction_to_byte(opcode, addressing_mode)?];
+        let mut bytes = vec![instruction_to_byte(opcode, addressing_mode, position)?];
 
         if let Some(value) = value {
             match value {
@@ -159,10 +142,10 @@ impl Assembler {
                     NumberType::Hexadecimal16(value) => bytes.extend(value.to_le_bytes()),
                 },
                 OperandData::Label(label) => {
-                    let label_address = self
-                        .labels
-                        .get(&label)
-                        .ok_or(AssemblerError::new(AssemblerErrorKind::InvalidLabel(label)))?;
+                    let label_address = self.labels.get(&label).ok_or(AssemblerError::new(
+                        AssemblerErrorKind::InvalidLabel(label),
+                        position,
+                    ))?;
 
                     // Absolute addressing
                     if opcode == Mnemonics::JMP {
@@ -197,7 +180,7 @@ LDX #$01
 STX $0000
 "#;
 
-        let src = Assembler::new(s.to_string()).assemble().unwrap();
+        let src = Assembler::new(s).assemble().unwrap();
         assert_eq!(src, vec![0xA2, 0x01, 0x8E, 0x00, 0x00]);
     }
 
@@ -217,7 +200,7 @@ FOO:
     BRK
         "#;
 
-        let src = Assembler::new(s.to_string()).assemble().unwrap();
+        let src = Assembler::new(s).assemble().unwrap();
         assert_eq!(
             src,
             vec![

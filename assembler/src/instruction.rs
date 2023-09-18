@@ -1,4 +1,5 @@
-use crate::{AssemblerError, AssemblerErrorKind, AssemblerResult};
+use crate::{AssemblerError, AssemblerErrorKind, AssemblerResult, Position};
+use std::fmt;
 
 macro_rules! enum_mnemonics {
     ($($ident:ident),*) => {
@@ -9,10 +10,10 @@ macro_rules! enum_mnemonics {
         }
 
         impl Mnemonics {
-            pub fn to_mnemonics(s: &str) -> AssemblerResult<Self> {
+            pub fn to_mnemonics(s: &str, position: Position) -> AssemblerResult<Self> {
                 Ok(match s.to_uppercase().as_str() {
                     $(stringify!($ident) => Mnemonics::$ident,)*
-                    _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidMnemonic(s.to_string()))),
+                    _ => return Err(AssemblerError::new(AssemblerErrorKind::InvalidMnemonic(s.to_string()), position)),
                 })
             }
         }
@@ -70,6 +71,15 @@ pub enum OperandData {
     Label(String),
 }
 
+impl fmt::Display for OperandData {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            OperandData::Number(number) => write!(f, "{number}"),
+            OperandData::Label(s) => write!(f, "{s}"),
+        }
+    }
+}
+
 impl OperandData {
     pub fn is_number(&self) -> bool {
         matches!(self, OperandData::Number(_))
@@ -100,7 +110,7 @@ impl OperandData {
     }
 }
 
-#[derive(Debug, Clone, PartialEq)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub enum NumberType {
     Decimal8(u8),
     Decimal16(u16),
@@ -108,9 +118,21 @@ pub enum NumberType {
     Hexadecimal16(u16),
 }
 
+impl fmt::Display for NumberType {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        match self {
+            NumberType::Decimal8(n) => write!(f, "{n}"),
+            NumberType::Decimal16(n) => write!(f, "{n}"),
+            NumberType::Hexadecimal8(n) => write!(f, "${:02X}", n),
+            NumberType::Hexadecimal16(n) => write!(f, "${:04X}", n),
+        }
+    }
+}
+
 pub fn instruction_to_byte(
     mnemonic: Mnemonics,
     addressing_mode: AddressingMode,
+    position: Position,
 ) -> AssemblerResult<u8> {
     use AddressingMode::*;
     use Mnemonics::*;
@@ -325,10 +347,10 @@ pub fn instruction_to_byte(
         // TYA
         (TYA, IMPACC) => 0x98,
         _ => {
-            return Err(AssemblerError::new(AssemblerErrorKind::InvalidInstruction(
-                mnemonic.to_string(),
-                addressing_mode,
-            )))
+            return Err(AssemblerError::new(
+                AssemblerErrorKind::InvalidInstruction(mnemonic.to_string(), addressing_mode),
+                position,
+            ))
         }
     })
 }
