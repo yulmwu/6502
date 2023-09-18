@@ -288,9 +288,10 @@ where
 
             /* BRK */ 0x00 => {}
             /* NOP */
-            _ => self
-                .debugger
-                .debug(&format!("Unknown opcode: 0x{:02X}", opcode), DebugKind::Warn),
+            _ => self.debugger.debug(
+                &format!("Unknown opcode: 0x{:02X}", opcode),
+                DebugKind::Warn,
+            ),
         }
     }
 

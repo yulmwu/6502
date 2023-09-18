@@ -1,4 +1,4 @@
-use crate::{Debugger, NoneDebugger, DebugKind};
+use crate::{DebugKind, Debugger, NoneDebugger};
 
 pub const STACK_BASE: u16 = 0x0100;
 
