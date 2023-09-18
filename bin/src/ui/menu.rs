@@ -34,7 +34,7 @@ impl View for MenuBar {
             }
 
             if ui.button("Load").clicked() {
-                let src = match Assembler::new(app.source_input.clone()).assemble() {
+                let src = match Assembler::new(&app.source_input).assemble() {
                     Ok(src) => src,
                     Err(e) => {
                         app.error = Some(e.to_string());

@@ -21,7 +21,7 @@ impl View for Display {
                 })
                 .collect::<Vec<_>>();
 
-            if k.len() > 0 {
+            if !k.is_empty() {
                 let ascii = k[0].as_bytes().to_ascii_uppercase()[0];
                 app.key_input = format!("{} (0x00FF = {:X})", k[0], ascii);
                 app.emulator.memory.mem[0x00FF] = ascii;

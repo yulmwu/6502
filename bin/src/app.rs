@@ -73,7 +73,7 @@ pub struct App {
 
 impl App {
     pub fn new(program: &str) -> App {
-        let src = Assembler::new(program.to_string()).assemble().unwrap();
+        let src = Assembler::new(program).assemble().unwrap();
 
         let memory = Memory::new();
 
