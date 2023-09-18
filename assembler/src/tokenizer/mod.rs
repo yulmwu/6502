@@ -19,6 +19,7 @@ pub enum TokenKind<'a> {
     Hexadecimal16Bit(u16),
     Identifier(&'a str),
     Comment,
+    Define,
     EOF,
 }
 
@@ -40,6 +41,7 @@ impl fmt::Display for TokenKind<'_> {
             Hexadecimal16Bit(n) => write!(f, "${:04X}", n),
             Identifier(s) => write!(f, "{}", s),
             Comment => write!(f, ";"),
+            Define => write!(f, "define"),
             EOF => write!(f, "EOF"),
         }
     }

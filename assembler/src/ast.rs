@@ -16,6 +16,7 @@ pub struct Program(pub Vec<Statement>);
 pub enum Statement {
     Instruction(Instruction),
     Label(String),
+    Define(String, Operand),
 }
 
 #[derive(Debug, Clone, PartialEq)]

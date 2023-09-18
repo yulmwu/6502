@@ -3,7 +3,7 @@ use crate::{
     Mnemonics, NumberType, Operand, OperandData, Position, Program, Statement, Token, TokenKind,
 };
 
-#[derive(Debug)]
+#[derive(Debug, Default)]
 pub struct Parser<'a> {
     pub lexer: Lexer<'a>,
     current_token: Token<'a>,
@@ -15,9 +15,7 @@ impl<'a> Parser<'a> {
     pub fn new(lexer: Lexer<'a>) -> Self {
         let mut parser = Self {
             lexer,
-            current_token: Token::default(),
-            peek_token: Token::default(),
-            position: Position::default(),
+            ..Default::default()
         };
         parser.next_token().unwrap();
         parser.next_token().unwrap();
@@ -66,8 +64,14 @@ impl<'a> Parser<'a> {
                         self.next_token()?;
                     }
                 }
-                TokenKind::Newline => {
-                    self.next_token()?;
+                TokenKind::Newline => self.next_token()?,
+                TokenKind::Define => {
+                    let statement = self.parse_define()?;
+                    program.0.push(statement);
+
+                    if self.current_token.kind == TokenKind::Newline {
+                        self.next_token()?;
+                    }
                 }
                 _ => {
                     return Err(AssemblerError::new(
@@ -313,6 +317,27 @@ impl<'a> Parser<'a> {
                 ))
             }
         })
+    }
+
+    fn parse_define(&mut self) -> AssemblerResult<Statement> {
+        self.expect_token(&TokenKind::Define)?;
+        let identifier = match self.current_token.kind {
+            TokenKind::Identifier(identifier) => identifier,
+            _ => {
+                return Err(AssemblerError::new(
+                    AssemblerErrorKind::UnexpectedToken {
+                        expected: TokenKind::Identifier("identifier").to_string(),
+                        found: self.current_token.kind.to_string(),
+                    },
+                    self.position,
+                ))
+            }
+        };
+        self.next_token()?;
+
+        let operand = self.parse_operand()?;
+
+        Ok(Statement::Define(identifier.to_string(), operand))
     }
 }
 

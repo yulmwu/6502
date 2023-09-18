@@ -172,7 +172,11 @@ impl<'a> Lexer<'a> {
                     }
                 }
                 c if c.is_alphabetic() => {
-                    Ok(Token::new(Identifier(self.read_identifier()), position))
+                    let identifier = self.read_identifier();
+                    Ok(match identifier {
+                        "define" => Token::new(Define, position),
+                        identifier => Token::new(Identifier(identifier), position),
+                    })
                 }
                 c if c.is_numeric() => {
                     Ok(Token::new(Decimal(self.read_number()? as u16), position))

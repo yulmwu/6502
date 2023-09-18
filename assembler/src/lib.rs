@@ -108,6 +108,7 @@ impl<'a> Assembler<'a> {
                         }
                     }
                 }
+                Statement::Define(_, _) => todo!(),
             }
         }
 
