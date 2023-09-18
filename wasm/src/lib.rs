@@ -126,7 +126,7 @@ impl Emulator {
     }
 
     pub fn assemble(&self, source: &str) -> AssemblerResult {
-        let src = Assembler::new(source.to_string()).assemble();
+        let src = Assembler::new(source).assemble();
 
         match src {
             Ok(src) => AssemblerResult {
