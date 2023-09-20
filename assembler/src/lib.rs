@@ -114,8 +114,6 @@ impl<'a> Assembler<'a> {
             .copied()
             .collect::<Vec<_>>();
 
-        println!("{} {:?}", instruction.opcode, bytes);
-
         self.pointer += bytes.len();
 
         Ok(bytes)
