@@ -7,8 +7,7 @@ pub mod app;
 pub mod ui;
 
 /// (time, message, kind)
-pub static mut DEBUG_OUTPUT: (String, String, DebugKind) =
-    (String::new(), String::new(), DebugKind::Info);
+pub static mut DEBUG_OUTPUT: Vec<(String, String, DebugKind)> = Vec::new();
 pub static mut DEBUG_UPDATE: bool = false;
 pub static IS_RUNNING: AtomicBool = AtomicBool::new(false);
 

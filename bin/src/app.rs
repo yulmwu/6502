@@ -11,16 +11,11 @@ pub struct AppDebugger;
 impl Debugger for AppDebugger {
     fn debug(&mut self, msg: &str, kind: DebugKind) {
         unsafe {
-            DEBUG_OUTPUT
-                .0
-                .push_str(Local::now().format("%H:%M:%S").to_string().as_str());
-            #[allow(clippy::single_char_add_str)]
-            DEBUG_OUTPUT.0.push_str("\n");
-            DEBUG_OUTPUT.1.push_str(msg);
-
-            #[allow(clippy::single_char_add_str)]
-            DEBUG_OUTPUT.1.push_str("\n");
-            DEBUG_OUTPUT.2 = kind;
+            DEBUG_OUTPUT.push((
+                Local::now().format("%H:%M:%S").to_string(),
+                msg.to_string(),
+                kind,
+            ));
 
             DEBUG_UPDATE = true;
 

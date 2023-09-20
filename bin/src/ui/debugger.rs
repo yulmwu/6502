@@ -13,8 +13,7 @@ impl View for DebuggerUi {
 
             if ui.button("clear").clicked() {
                 unsafe {
-                    DEBUG_OUTPUT.0.clear();
-                    DEBUG_OUTPUT.1.clear();
+                    DEBUG_OUTPUT.clear();
                 }
             }
         });
@@ -28,26 +27,31 @@ impl View for DebuggerOutput {
         ScrollArea::both()
             .auto_shrink([false, false])
             .show(ui, |ui| {
-                ui.horizontal(|ui| {
-                    let debug = unsafe { DEBUG_OUTPUT.clone() };
-                    let time = Label::new(
-                        RichText::new(debug.0)
-                            .monospace()
-                            .color(Color32::LIGHT_BLUE),
-                    );
-                    let color = match debug.2 {
-                        DebugKind::Info => Color32::WHITE,
-                        DebugKind::Warn => Color32::YELLOW,
-                        DebugKind::Error => Color32::RED,
-                    };
-                    let msg = Label::new(RichText::new(debug.1).monospace().color(color));
+                ui.vertical(|ui| {
+                    let messages = unsafe { DEBUG_OUTPUT.clone() };
+                    for debug in messages {
+                        ui.horizontal(|ui| {
+                            let time = Label::new(
+                                RichText::new(debug.0)
+                                    .monospace()
+                                    .color(Color32::LIGHT_BLUE),
+                            );
+                            let color = match debug.2 {
+                                DebugKind::Info => Color32::WHITE,
+                                DebugKind::Warn => Color32::YELLOW,
+                                DebugKind::Error => Color32::RED,
+                            };
+                            let msg = Label::new(RichText::new(debug.1).monospace().color(color));
 
-                    if unsafe { DEBUG_UPDATE } {
-                        ui.add(time);
-                        ui.add(msg).scroll_to_me(Some(Align::BOTTOM));
-                    } else {
-                        ui.add(time);
-                        ui.add(msg);
+                            if unsafe { DEBUG_UPDATE } {
+                                ui.add(time);
+                                ui.add(msg);
+                                ui.scroll_to_cursor(Some(Align::Center));
+                            } else {
+                                ui.add(time);
+                                ui.add(msg);
+                            }
+                        });
                     }
                 });
             });
