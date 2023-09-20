@@ -174,7 +174,7 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Identifier(identifier) => {
                 self.next_token()?;
-                let operand_data = OperandData::Label(identifier.to_string());
+                let operand_data = OperandData::Ident(identifier.to_string());
                 Operand::new(AddressingMode::RELZPG, Some(operand_data))
             }
             TokenKind::EOF | TokenKind::Newline => Operand::new(AddressingMode::IMPACC, None),
@@ -202,7 +202,7 @@ impl<'a> Parser<'a> {
             TokenKind::Hexadecimal16Bit(number) => {
                 OperandData::Number(NumberType::Hexadecimal16(number))
             }
-            TokenKind::Identifier(identifier) => OperandData::Label(identifier.to_string()),
+            TokenKind::Identifier(identifier) => OperandData::Ident(identifier.to_string()),
             _ => {
                 return Err(AssemblerError::new(
                     AssemblerErrorKind::InvalidOperand(self.current_token.kind.to_string()),

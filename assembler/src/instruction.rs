@@ -1,4 +1,4 @@
-use crate::{AssemblerError, AssemblerErrorKind, AssemblerResult, Position};
+use crate::{AssemblerError, AssemblerErrorKind, AssemblerResult, Instruction, Position};
 use std::fmt;
 
 macro_rules! enum_mnemonics {
@@ -68,14 +68,14 @@ impl Operand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum OperandData {
     Number(NumberType),
-    Label(String),
+    Ident(String),
 }
 
 impl fmt::Display for OperandData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             OperandData::Number(number) => write!(f, "{number}"),
-            OperandData::Label(s) => write!(f, "{s}"),
+            OperandData::Ident(s) => write!(f, "{s}"),
         }
     }
 }
@@ -86,7 +86,7 @@ impl OperandData {
     }
 
     pub fn is_label(&self) -> bool {
-        matches!(self, OperandData::Label(_))
+        matches!(self, OperandData::Ident(_))
     }
 
     pub fn is_dec_8(&self) -> bool {
@@ -129,15 +129,19 @@ impl fmt::Display for NumberType {
     }
 }
 
-pub fn instruction_to_byte(
-    mnemonic: Mnemonics,
-    addressing_mode: AddressingMode,
-    position: Position,
-) -> AssemblerResult<u8> {
+pub fn instruction_to_byte(instruction: Instruction) -> AssemblerResult<u8> {
+    let Instruction {
+        opcode,
+        operand: Operand {
+            addressing_mode, ..
+        },
+        position,
+    } = instruction.clone();
+
     use AddressingMode::*;
     use Mnemonics::*;
 
-    Ok(match (mnemonic, addressing_mode) {
+    Ok(match (opcode, addressing_mode) {
         // ADC
         (ADC, IMM) => 0x69,
         (ADC, RELZPG) => 0x65,
@@ -348,7 +352,7 @@ pub fn instruction_to_byte(
         (TYA, IMPACC) => 0x98,
         _ => {
             return Err(AssemblerError::new(
-                AssemblerErrorKind::InvalidInstruction(mnemonic.to_string(), addressing_mode),
+                AssemblerErrorKind::InvalidInstruction(opcode.to_string(), addressing_mode),
                 position,
             ))
         }

@@ -64,6 +64,7 @@ pub struct Assembler<'a> {
     pub source: &'a str,
     pointer: usize,
     labels: HashMap<String, u16>,
+    defines: HashMap<String, Operand>,
 }
 
 impl<'a> Assembler<'a> {
@@ -72,6 +73,7 @@ impl<'a> Assembler<'a> {
             source,
             pointer: 0,
             labels: HashMap::new(),
+            defines: HashMap::new(),
         }
     }
 
@@ -83,33 +85,7 @@ impl<'a> Assembler<'a> {
         let mut bytes = Vec::new();
 
         for statement in p.0.clone() {
-            match statement {
-                Statement::Label(label) => self.assemble_label(label),
-                Statement::Instruction(instruction) => {
-                    self.pointer += 1;
-
-                    let Instruction {
-                        opcode: _,
-                        operand: Operand { value, .. },
-                        position: _,
-                    } = instruction;
-
-                    if let Some(value) = value {
-                        match value {
-                            OperandData::Number(number_type) => match number_type {
-                                NumberType::Decimal8(_) | NumberType::Hexadecimal8(_) => {
-                                    self.pointer += 1
-                                }
-                                NumberType::Decimal16(_) | NumberType::Hexadecimal16(_) => {
-                                    self.pointer += 2
-                                }
-                            },
-                            OperandData::Label(_) => self.pointer += 1,
-                        }
-                    }
-                }
-                Statement::Define(_, _) => todo!(),
-            }
+            self.preprocess_statement(statement);
         }
 
         self.pointer = 0;
@@ -124,49 +100,135 @@ impl<'a> Assembler<'a> {
     }
 
     fn assemble_instruction(&mut self, instruction: Instruction) -> AssemblerResult<Vec<u8>> {
-        let Instruction {
-            opcode,
+        let operand = self.assemble_operand_data(instruction.clone())?;
+        let instruction = Instruction {
             operand: Operand {
-                addressing_mode,
-                value,
+                addressing_mode: operand.1,
+                ..instruction.operand
             },
-            position,
+            ..instruction
+        };
+        let bytes = [instruction_to_byte(instruction.clone())?]
+            .iter()
+            .chain(&operand.0)
+            .copied()
+            .collect::<Vec<_>>();
+
+        println!("{} {:?}", instruction.opcode, bytes);
+
+        self.pointer += bytes.len();
+
+        Ok(bytes)
+    }
+
+    fn preprocess_statement(&mut self, statement: Statement) {
+        match statement {
+            Statement::Instruction(instruction) => {
+                self.pointer += 1;
+
+                self.preprocess_operand(instruction);
+            }
+            Statement::Label(label) => {
+                self.labels.insert(label, self.pointer as u16);
+            }
+            Statement::Define(ident, operand) => {
+                self.defines.insert(ident, operand);
+            }
+        }
+    }
+
+    fn preprocess_operand(&mut self, instruction: Instruction) {
+        let Instruction {
+            operand: Operand { value, .. },
+            ..
         } = instruction;
-        let mut bytes = vec![instruction_to_byte(opcode, addressing_mode, position)?];
 
         if let Some(value) = value {
             match value {
                 OperandData::Number(number_type) => match number_type {
-                    NumberType::Decimal8(value) => bytes.extend(value.to_le_bytes()),
-                    NumberType::Decimal16(value) => bytes.extend(value.to_le_bytes()),
-                    NumberType::Hexadecimal8(value) => bytes.extend(value.to_le_bytes()),
-                    NumberType::Hexadecimal16(value) => bytes.extend(value.to_le_bytes()),
+                    NumberType::Decimal8(_) | NumberType::Hexadecimal8(_) => self.pointer += 1,
+                    NumberType::Decimal16(_) | NumberType::Hexadecimal16(_) => self.pointer += 2,
                 },
-                OperandData::Label(label) => {
-                    let label_address = self.labels.get(&label).ok_or(AssemblerError::new(
-                        AssemblerErrorKind::InvalidLabel(label),
-                        position,
-                    ))?;
+                OperandData::Ident(ident) => {
+                    if let Some(operand) = self.labels.get(&ident) {
+                        if *operand > 0xFF {
+                            self.pointer += 2;
+                        } else {
+                            self.pointer += 1;
+                        }
+                    } else if let Some(operand) = self.defines.get(&ident) {
+                        self.preprocess_operand(Instruction {
+                            operand: operand.clone(),
+                            ..instruction
+                        });
+                    }
+                }
+            }
+        }
+    }
 
-                    // Absolute addressing
-                    if opcode == Mnemonics::JMP {
-                        let absolute_address: u16 = *label_address + 0x8000;
-                        bytes.extend(absolute_address.to_le_bytes());
-                    } else {
-                        let relative_address: u8 =
-                            (*label_address as i16 - self.pointer as i16 - 2) as u8;
-                        bytes.extend(relative_address.to_le_bytes());
+    fn assemble_operand_data(
+        &mut self,
+        instruction: Instruction,
+    ) -> AssemblerResult<(Vec<u8>, AddressingMode)> {
+        let Instruction {
+            opcode,
+            operand: Operand {
+                value,
+                addressing_mode,
+            },
+            position,
+        } = instruction;
+
+        let value = if let Some(value) = value {
+            value
+        } else {
+            return Ok((vec![], AddressingMode::IMPACC));
+        };
+
+        let mut bytes = Vec::new();
+
+        match value {
+            OperandData::Number(number_type) => match number_type {
+                NumberType::Decimal8(value) => bytes.extend(value.to_le_bytes()),
+                NumberType::Decimal16(value) => bytes.extend(value.to_le_bytes()),
+                NumberType::Hexadecimal8(value) => bytes.extend(value.to_le_bytes()),
+                NumberType::Hexadecimal16(value) => bytes.extend(value.to_le_bytes()),
+            },
+            OperandData::Ident(label) => {
+                match self.labels.get(&label) {
+                    Some(address) => {
+                        // Absolute addressing
+                        if opcode == Mnemonics::JMP {
+                            let absolute_address = *address + 0x8000;
+                            bytes.extend(absolute_address.to_le_bytes());
+                        } else {
+                            let relative_address =
+                                (*address as i16 - self.pointer as i16 - 2) as u8;
+                            bytes.extend(relative_address.to_le_bytes());
+                        }
+                    }
+                    None => {
+                        let operand = self.defines.get(&label).ok_or_else(|| {
+                            AssemblerError::new(
+                                AssemblerErrorKind::InvalidOperand(label.clone()),
+                                position,
+                            )
+                        })?;
+
+                        let x = self.assemble_operand_data(Instruction {
+                            opcode,
+                            operand: operand.clone(),
+                            position,
+                        })?;
+
+                        return Ok(x);
                     }
                 }
             }
         }
 
-        self.pointer += bytes.len();
-        Ok(bytes)
-    }
-
-    fn assemble_label(&mut self, label: String) {
-        self.labels.insert(label, self.pointer as u16);
+        Ok((bytes, addressing_mode))
     }
 }
 
