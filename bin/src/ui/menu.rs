@@ -1,6 +1,7 @@
-use crate::{app::App, View};
+use crate::{app::App, View, IS_RUNNING};
 use assembler::Assembler;
 use eframe::egui::{menu::menu_button, *};
+use std::sync::atomic::Ordering;
 
 pub struct MenuBar;
 
@@ -25,11 +26,11 @@ impl View for MenuBar {
             ui.separator();
 
             if ui.button("Run").clicked() {
-                app.is_running = true;
+                IS_RUNNING.store(true, Ordering::Relaxed);
             }
 
             if ui.button("Halt").clicked() {
-                app.is_running = false;
+                IS_RUNNING.store(false, Ordering::Relaxed);
                 app.emulator.debug("Halted");
             }
 

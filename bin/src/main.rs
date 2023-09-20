@@ -15,9 +15,11 @@ fn main() -> Result<(), eframe::Error> {
 LDX #$00
 LDY #$00
 
+define STA_ADDR $0200,Y
+
 firstloop:
     TXA
-    STA $0200,Y
+    STA STA_ADDR
     PHA
     INX
     INY
@@ -26,7 +28,7 @@ firstloop:
 
 secondloop:
     PLA
-    STA $0200,Y
+    STA STA_ADDR
     INY
     CPY #$20
     BNE secondloop

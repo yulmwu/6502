@@ -1,8 +1,9 @@
-use crate::{ui::*, View, DEBUG_OUTPUT, DEBUG_UPDATE};
+use crate::{ui::*, View, DEBUG_OUTPUT, DEBUG_UPDATE, IS_RUNNING};
 use assembler::Assembler;
 use chrono::prelude::*;
 use eframe::egui::*;
 use emulator::{memory::Memory, Cpu6502, CpuDebugger, DebugKind, Debugger};
+use std::sync::atomic::Ordering;
 
 #[derive(Default)]
 pub struct AppDebugger;
@@ -22,6 +23,10 @@ impl Debugger for AppDebugger {
             DEBUG_OUTPUT.2 = kind;
 
             DEBUG_UPDATE = true;
+
+            // if true && kind != DebugKind::Info {
+            //     IS_RUNNING.store(false, Ordering::Relaxed);
+            // }
         }
     }
 }
@@ -61,7 +66,6 @@ impl Default for WindowVisibility {
 #[derive(Default)]
 pub struct App {
     pub emulator: Cpu6502<AppDebugger>,
-    pub is_running: bool,
     pub source_input: String,
     pub memory_dump_range: (u16, u16),
     pub memory_dump_range_input: (String, String),
@@ -84,7 +88,6 @@ impl App {
 
         Self {
             emulator,
-            is_running: false,
             source_input: program.to_string(),
             memory_dump_range: (0x0000, 0x00FF),
             memory_dump_range_input: ("0000".to_string(), "00FF".to_string()),
@@ -193,10 +196,10 @@ impl eframe::App for App {
             }
         }
 
-        if self.is_running {
+        if IS_RUNNING.load(Ordering::Relaxed) {
             let op = self.emulator.step();
             if op == 0x00 {
-                self.is_running = false;
+                IS_RUNNING.store(false, Ordering::Relaxed);
                 self.emulator.debug("Program finished");
             }
         }
