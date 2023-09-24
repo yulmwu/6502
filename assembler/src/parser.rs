@@ -2,6 +2,7 @@ use crate::{
     lexer::Lexer, AddressingMode, AssemblerError, AssemblerErrorKind, AssemblerResult, Instruction,
     Mnemonics, NumberType, Operand, OperandData, Position, Program, Statement, Token, TokenKind,
 };
+use std::collections::HashMap;
 
 #[derive(Debug, Default)]
 pub struct Parser<'a> {
@@ -9,6 +10,7 @@ pub struct Parser<'a> {
     current_token: Token<'a>,
     peek_token: Token<'a>,
     position: Position,
+    defines: HashMap<String, Operand>,
 }
 
 impl<'a> Parser<'a> {
@@ -66,8 +68,7 @@ impl<'a> Parser<'a> {
                 }
                 TokenKind::Newline => self.next_token()?,
                 TokenKind::Define => {
-                    let statement = self.parse_define()?;
-                    program.0.push(statement);
+                    self.parse_define()?;
 
                     if self.current_token.kind == TokenKind::Newline {
                         self.next_token()?;
@@ -174,8 +175,12 @@ impl<'a> Parser<'a> {
             }
             TokenKind::Identifier(identifier) => {
                 self.next_token()?;
-                let operand_data = OperandData::Ident(identifier.to_string());
-                Operand::new(AddressingMode::RELZPG, Some(operand_data))
+                if let Some(operand) = self.defines.get(identifier) {
+                    operand.clone()
+                } else {
+                    let operand_data = OperandData::Label(identifier.to_string());
+                    Operand::new(AddressingMode::RELZPG, Some(operand_data))
+                }
             }
             TokenKind::EOF | TokenKind::Newline => Operand::new(AddressingMode::IMPACC, None),
             _ => {
@@ -202,7 +207,13 @@ impl<'a> Parser<'a> {
             TokenKind::Hexadecimal16Bit(number) => {
                 OperandData::Number(NumberType::Hexadecimal16(number))
             }
-            TokenKind::Identifier(identifier) => OperandData::Ident(identifier.to_string()),
+            TokenKind::Identifier(identifier) => {
+                if let Some(operand) = self.defines.get(identifier) {
+                    operand.value.clone().unwrap()
+                } else {
+                    OperandData::Label(identifier.to_string())
+                }
+            }
             _ => {
                 return Err(AssemblerError::new(
                     AssemblerErrorKind::InvalidOperand(self.current_token.kind.to_string()),
@@ -319,7 +330,7 @@ impl<'a> Parser<'a> {
         })
     }
 
-    fn parse_define(&mut self) -> AssemblerResult<Statement> {
+    fn parse_define(&mut self) -> AssemblerResult<()> {
         self.expect_token(&TokenKind::Define)?;
         let identifier = match self.current_token.kind {
             TokenKind::Identifier(identifier) => identifier,
@@ -336,8 +347,9 @@ impl<'a> Parser<'a> {
         self.next_token()?;
 
         let operand = self.parse_operand()?;
+        self.defines.insert(identifier.to_string(), operand);
 
-        Ok(Statement::Define(identifier.to_string(), operand))
+        Ok(())
     }
 }
 

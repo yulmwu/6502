@@ -1,3 +1,10 @@
+/*
+TODO
+
+define 파서에서 다 처리하기
+=> OperandData::Ident -> OperandData::Label
+*/
+
 mod ast;
 mod instruction;
 mod parser;
@@ -6,9 +13,10 @@ mod tokenizer;
 pub use ast::*;
 pub use instruction::*;
 pub use parser::*;
+pub use tokenizer::*;
+
 use std::{collections::HashMap, fmt};
 use tokenizer::lexer::Lexer;
-pub use tokenizer::*;
 
 #[derive(Debug)]
 pub enum AssemblerErrorKind {
@@ -64,7 +72,6 @@ pub struct Assembler<'a> {
     pub source: &'a str,
     pointer: usize,
     labels: HashMap<String, u16>,
-    defines: HashMap<String, Operand>,
 }
 
 impl<'a> Assembler<'a> {
@@ -73,7 +80,6 @@ impl<'a> Assembler<'a> {
             source,
             pointer: 0,
             labels: HashMap::new(),
-            defines: HashMap::new(),
         }
     }
 
@@ -129,9 +135,6 @@ impl<'a> Assembler<'a> {
             Statement::Label(label) => {
                 self.labels.insert(label, self.pointer as u16);
             }
-            Statement::Define(ident, operand) => {
-                self.defines.insert(ident, operand);
-            }
         }
     }
 
@@ -147,20 +150,7 @@ impl<'a> Assembler<'a> {
                     NumberType::Decimal8(_) | NumberType::Hexadecimal8(_) => self.pointer += 1,
                     NumberType::Decimal16(_) | NumberType::Hexadecimal16(_) => self.pointer += 2,
                 },
-                OperandData::Ident(ident) => {
-                    if let Some(operand) = self.labels.get(&ident) {
-                        if *operand > 0xFF {
-                            self.pointer += 2;
-                        } else {
-                            self.pointer += 1;
-                        }
-                    } else if let Some(operand) = self.defines.get(&ident) {
-                        self.preprocess_operand(Instruction {
-                            operand: operand.clone(),
-                            ..instruction
-                        });
-                    }
-                }
+                OperandData::Label(_) => self.pointer += 1,
             }
         }
     }
@@ -193,7 +183,7 @@ impl<'a> Assembler<'a> {
                 NumberType::Hexadecimal8(value) => bytes.extend(value.to_le_bytes()),
                 NumberType::Hexadecimal16(value) => bytes.extend(value.to_le_bytes()),
             },
-            OperandData::Ident(label) => {
+            OperandData::Label(label) => {
                 match self.labels.get(&label) {
                     Some(address) => {
                         // Absolute addressing
@@ -207,20 +197,10 @@ impl<'a> Assembler<'a> {
                         }
                     }
                     None => {
-                        let operand = self.defines.get(&label).ok_or_else(|| {
-                            AssemblerError::new(
-                                AssemblerErrorKind::InvalidOperand(label.clone()),
-                                position,
-                            )
-                        })?;
-
-                        let x = self.assemble_operand_data(Instruction {
-                            opcode,
-                            operand: operand.clone(),
+                        return Err(AssemblerError::new(
+                            AssemblerErrorKind::InvalidLabel(label),
                             position,
-                        })?;
-
-                        return Ok(x);
+                        ))
                     }
                 }
             }

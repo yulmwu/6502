@@ -68,14 +68,14 @@ impl Operand {
 #[derive(Debug, Clone, PartialEq)]
 pub enum OperandData {
     Number(NumberType),
-    Ident(String),
+    Label(String),
 }
 
 impl fmt::Display for OperandData {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
             OperandData::Number(number) => write!(f, "{number}"),
-            OperandData::Ident(s) => write!(f, "{s}"),
+            OperandData::Label(s) => write!(f, "{s}"),
         }
     }
 }
@@ -86,7 +86,7 @@ impl OperandData {
     }
 
     pub fn is_label(&self) -> bool {
-        matches!(self, OperandData::Ident(_))
+        matches!(self, OperandData::Label(_))
     }
 
     pub fn is_dec_8(&self) -> bool {
