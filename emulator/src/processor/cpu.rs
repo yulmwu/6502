@@ -525,8 +525,18 @@ where
         }
     }
 
-    fn bit(&mut self, _: AddressingMode) {
-        todo!()
+    /// ## BIT (Bit Test)
+    /// 
+    /// Test Bits in Memory with Accumulator
+    /// 
+    /// `A AND M, M7 -> N, M6 -> V`, Flags affected: `N` `V` `Z`
+    fn bit(&mut self, mode: AddressingMode) {
+        let data = self.get_data_from_addressing_mode(mode);
+        let result = self.registers.a & data;
+
+        self.registers.set_flag_negative(data & 0x80 != 0);
+        self.registers.set_flag_overflow(data & 0x40 != 0);
+        self.registers.set_flag_zero(result == 0);
     }
 
     /// ## BMI (Branch if Minus)
@@ -1362,8 +1372,23 @@ mod tests {
         }
 
         #[test]
-        #[ignore]
-        fn bit() {}
+        fn bit() {
+            let mut cpu = setup();
+            cpu.reset();
+            cpu.registers.a = 129;
+            cpu.memory.write(0x10, 150);
+            cpu.load(&[
+                0x24, 0x10, // BIT
+                0x00,
+            ]);
+
+            cpu.execute();
+
+            assert_eq_hex!(cpu.registers.pc, 0x8003);
+            assert_eq!(cpu.registers.get_flag_zero(), false);
+            assert_eq!(cpu.registers.get_flag_overflow(), false);
+            assert_eq!(cpu.registers.get_flag_negative(), true);
+        }
 
         #[test]
         fn bmi() {

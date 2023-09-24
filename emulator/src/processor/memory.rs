@@ -1,6 +1,7 @@
 use crate::{DebugKind, Debugger, NoneDebugger};
 
 pub const STACK_BASE: u16 = 0x0100;
+pub const ORG: u16 = 0x8000;
 
 /// # Memory Bus
 ///
@@ -75,7 +76,7 @@ impl<T: Debugger> MemoryBus for Memory<T> {
     /// `rom` function loads the program from address `0x8000`.
     fn rom(&mut self, program: &[Self::Data]) {
         self.debug(format!("Load ROM ({} bytes)", program.len()).as_str());
-        self.mem[0x8000..0x8000 + program.len()].copy_from_slice(program);
+        self.mem[ORG as usize..ORG as usize + program.len()].copy_from_slice(program);
     }
 
     /// Resets the memory.

@@ -1,4 +1,4 @@
-use crate::{DebugKind, Debugger};
+use crate::{memory::ORG, DebugKind, Debugger};
 use std::fmt;
 
 /// # Registers
@@ -39,7 +39,7 @@ impl<T: Debugger> Default for Registers<T> {
             y: 0,
             p: 0,
             sp: 0,
-            pc: 0x8000,
+            pc: ORG,
             debugger: T::default(),
         }
     }
@@ -75,7 +75,7 @@ impl<T: Debugger> Registers<T> {
         self.y = 0;
         self.p = 0;
         self.sp = 0;
-        self.pc = 0x8000;
+        self.pc = ORG;
     }
 
     pub fn debug(&mut self, message: &str) {
