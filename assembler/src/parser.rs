@@ -176,7 +176,17 @@ impl<'a> Parser<'a> {
             TokenKind::Identifier(identifier) => {
                 self.next_token()?;
                 if let Some(operand) = self.defines.get(identifier) {
-                    operand.clone()
+                    match operand.value.clone().unwrap() {
+                        OperandData::Number(number_type) => match number_type {
+                            NumberType::Decimal8(_) | NumberType::Hexadecimal8(_) => {
+                                self.parse_8bit_operand_comma(operand.value.clone().unwrap())?
+                            }
+                            NumberType::Decimal16(_) | NumberType::Hexadecimal16(_) => {
+                                self.parse_16bit_operand_comma(operand.value.clone().unwrap())?
+                            }
+                        },
+                        _ => operand.clone(),
+                    }
                 } else {
                     let operand_data = OperandData::Label(identifier.to_string());
                     Operand::new(AddressingMode::RELZPG, Some(operand_data))

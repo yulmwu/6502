@@ -140,6 +140,7 @@ impl<'a> Assembler<'a> {
 
     fn preprocess_operand(&mut self, instruction: Instruction) {
         let Instruction {
+            opcode,
             operand: Operand { value, .. },
             ..
         } = instruction;
@@ -150,7 +151,17 @@ impl<'a> Assembler<'a> {
                     NumberType::Decimal8(_) | NumberType::Hexadecimal8(_) => self.pointer += 1,
                     NumberType::Decimal16(_) | NumberType::Hexadecimal16(_) => self.pointer += 2,
                 },
-                OperandData::Label(_) => self.pointer += 1,
+                OperandData::Label(_) => match opcode {
+                    Mnemonics::BCC
+                    | Mnemonics::BCS
+                    | Mnemonics::BEQ
+                    | Mnemonics::BMI
+                    | Mnemonics::BNE
+                    | Mnemonics::BPL
+                    | Mnemonics::BVC
+                    | Mnemonics::BVS => self.pointer += 1,
+                    _ => self.pointer += 2,
+                },
             }
         }
     }
@@ -183,27 +194,31 @@ impl<'a> Assembler<'a> {
                 NumberType::Hexadecimal8(value) => bytes.extend(value.to_le_bytes()),
                 NumberType::Hexadecimal16(value) => bytes.extend(value.to_le_bytes()),
             },
-            OperandData::Label(label) => {
-                match self.labels.get(&label) {
-                    Some(address) => {
-                        // Absolute addressing
-                        if opcode == Mnemonics::JMP {
-                            let absolute_address = *address + 0x8000;
-                            bytes.extend(absolute_address.to_le_bytes());
-                        } else {
-                            let relative_address =
-                                (*address as i16 - self.pointer as i16 - 2) as u8;
-                            bytes.extend(relative_address.to_le_bytes());
-                        }
+            OperandData::Label(label) => match self.labels.get(&label) {
+                Some(address) => match opcode {
+                    Mnemonics::BCC
+                    | Mnemonics::BCS
+                    | Mnemonics::BEQ
+                    | Mnemonics::BMI
+                    | Mnemonics::BNE
+                    | Mnemonics::BPL
+                    | Mnemonics::BVC
+                    | Mnemonics::BVS => {
+                        let relative_address = (*address as i16 - self.pointer as i16 - 2) as u8;
+                        bytes.extend(relative_address.to_le_bytes());
                     }
-                    None => {
-                        return Err(AssemblerError::new(
-                            AssemblerErrorKind::InvalidLabel(label),
-                            position,
-                        ))
+                    _ => {
+                        let absolute_address = *address + 0x8000;
+                        bytes.extend(absolute_address.to_le_bytes());
                     }
+                },
+                None => {
+                    return Err(AssemblerError::new(
+                        AssemblerErrorKind::InvalidLabel(label),
+                        position,
+                    ))
                 }
-            }
+            },
         }
 
         Ok((bytes, addressing_mode))

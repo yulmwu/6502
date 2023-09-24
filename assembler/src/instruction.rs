@@ -244,6 +244,7 @@ pub fn instruction_to_byte(instruction: Instruction) -> AssemblerResult<u8> {
         (JMP, ABS) => 0x4C,
         (JMP, IND) => 0x6C,
         // JSR
+        (JSR, RELZPG) => 0x20, // for label
         (JSR, ABS) => 0x20,
         // LDA
         (LDA, IMM) => 0xA9,

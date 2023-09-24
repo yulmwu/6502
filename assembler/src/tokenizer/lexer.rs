@@ -100,8 +100,8 @@ impl<'a> Lexer<'a> {
             ')' => Some(RParen),
             ',' => Some(Comma),
             ':' => Some(Colon),
-            'X' => Some(X),
-            'Y' => Some(Y),
+            'x' | 'X' => Some(X),
+            'y' | 'Y' => Some(Y),
             '#' => Some(Hash),
             ';' => {
                 self.read_comment();
