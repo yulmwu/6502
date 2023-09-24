@@ -13,6 +13,7 @@ impl<'a> Lexer<'a> {
     pub fn new(input: &'a str) -> Self {
         let mut lexer = Lexer {
             input,
+            current_position: Position(1, 0),
             ..Default::default()
         };
 
@@ -84,8 +85,6 @@ impl<'a> Lexer<'a> {
         while self.current_char != '\0' && self.current_char != '\n' {
             self.read_char();
         }
-
-        self.skip_whitespace();
     }
 
     pub fn next_token(&mut self) -> AssemblerResult<Token<'a>> {
