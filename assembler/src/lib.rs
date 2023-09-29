@@ -227,7 +227,7 @@ impl<'a> Assembler<'a> {
     }
 }
 
-pub fn diassemble(bytes: &[u8]) -> AssemblerResult<Vec<(usize, String)>> {
+pub fn disassemble(bytes: &[u8]) -> AssemblerResult<Vec<(usize, String)>> {
     let mut result = Vec::new();
     let mut pointer = 0;
 
