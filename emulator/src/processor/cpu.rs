@@ -526,9 +526,9 @@ where
     }
 
     /// ## BIT (Bit Test)
-    /// 
+    ///
     /// Test Bits in Memory with Accumulator
-    /// 
+    ///
     /// `A AND M, M7 -> N, M6 -> V`, Flags affected: `N` `V` `Z`
     fn bit(&mut self, mode: AddressingMode) {
         let data = self.get_data_from_addressing_mode(mode);

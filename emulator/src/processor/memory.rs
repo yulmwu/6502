@@ -1,3 +1,5 @@
+use std::slice::SliceIndex;
+
 use crate::{DebugKind, Debugger, NoneDebugger};
 
 pub const STACK_BASE: u16 = 0x0100;
@@ -16,6 +18,10 @@ pub trait MemoryBus {
     fn read(&mut self, addr: Self::Addr) -> Self::Data;
     fn write_addr(&mut self, addr: Self::Addr, data: Self::Addr);
     fn read_addr(&mut self, addr: Self::Addr) -> Self::Addr;
+    fn slice(
+        &mut self,
+        range: impl SliceIndex<[Self::Data], Output = [Self::Data]>,
+    ) -> &[Self::Data];
 }
 
 /// # Memory Map
@@ -114,6 +120,13 @@ impl<T: Debugger> MemoryBus for Memory<T> {
         let msb = self.read(address + 1);
 
         u16::from_le_bytes([lsb, msb])
+    }
+
+    fn slice(
+        &mut self,
+        range: impl SliceIndex<[Self::Data], Output = [Self::Data]>,
+    ) -> &[Self::Data] {
+        &self.mem[range]
     }
 }
 
