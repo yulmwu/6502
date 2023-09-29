@@ -227,7 +227,8 @@ impl<'a> Assembler<'a> {
     }
 }
 
-pub fn disassemble(bytes: &[u8]) -> AssemblerResult<Vec<(usize, String)>> {
+/// pointer, bytes, instruction
+pub fn disassemble(bytes: &[u8]) -> AssemblerResult<Vec<(usize, String, String)>> {
     let mut result = Vec::new();
     let mut pointer = 0;
 
@@ -294,7 +295,12 @@ pub fn disassemble(bytes: &[u8]) -> AssemblerResult<Vec<(usize, String)>> {
             }
         }
 
-        result.push((result_pointer, line));
+        let bytes = &bytes[result_pointer..pointer]
+            .iter()
+            .map(|b| format!("{b:02X}"))
+            .collect::<Vec<_>>()
+            .join(" ");
+        result.push((result_pointer, format!("{bytes:<8}"), line));
 
         if opcode == Mnemonics::BRK {
             break;
