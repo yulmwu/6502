@@ -28,6 +28,7 @@ pub enum AssemblerErrorKind {
     InvalidLabel(String),
     InvalidInstruction(String, AddressingMode),
     InvalidMnemonic(String),
+    InvalidOpcode(u8),
 }
 
 impl fmt::Display for AssemblerErrorKind {
@@ -40,7 +41,8 @@ impl fmt::Display for AssemblerErrorKind {
             AssemblerErrorKind::InvalidOperand(operand) => write!(f, "Invalid operand: {operand}"),
             AssemblerErrorKind::InvalidLabel(label) => write!(f, "Invalid label: {label}",),
             AssemblerErrorKind::InvalidInstruction(mnemonic, addressing_mode) => write!(f, "Invalid instruction: mnemonic {mnemonic:?} does not support {addressing_mode:?} addressing mode"),
-            AssemblerErrorKind::InvalidMnemonic(mnemonic) => write!(f, "Invalid mnemonic: {mnemonic:?}")
+            AssemblerErrorKind::InvalidMnemonic(mnemonic) => write!(f, "Invalid mnemonic: {mnemonic:?}"),
+            AssemblerErrorKind::InvalidOpcode(opcode) => write!(f, "Invalid opcode: {opcode:?}"),
         }
     }
 }
@@ -223,6 +225,83 @@ impl<'a> Assembler<'a> {
 
         Ok((bytes, addressing_mode))
     }
+}
+
+pub fn diassemble(bytes: &[u8]) -> AssemblerResult<Vec<(usize, String)>> {
+    let mut result = Vec::new();
+    let mut pointer = 0;
+
+    while pointer < bytes.len() {
+        let mut line = String::new();
+
+        let (opcode, addressing_mode) = byte_to_opcode(bytes[pointer])?;
+        let result_pointer = pointer;
+        pointer += 1;
+
+        match addressing_mode {
+            AddressingMode::IMPACC => {
+                line.push_str(&format!("{:?}", opcode));
+            }
+            AddressingMode::IMM => {
+                let operand = bytes[pointer];
+                pointer += 1;
+                line.push_str(&format!("{:?} #${:02X}", opcode, operand));
+            }
+            AddressingMode::RELZPG => {
+                let operand = bytes[pointer];
+                pointer += 1;
+                line.push_str(&format!("{:?} ${:02X}", opcode, operand));
+            }
+            AddressingMode::ZPX => {
+                let operand = bytes[pointer];
+                pointer += 1;
+                line.push_str(&format!("{:?} ${:02X},X", opcode, operand));
+            }
+            AddressingMode::ZPY => {
+                let operand = bytes[pointer];
+                pointer += 1;
+                line.push_str(&format!("{:?} ${:02X},Y", opcode, operand));
+            }
+            AddressingMode::ABS => {
+                let operand = u16::from_le_bytes([bytes[pointer], bytes[pointer + 1]]);
+                pointer += 2;
+                line.push_str(&format!("{:?} ${:04X}", opcode, operand));
+            }
+            AddressingMode::ABX => {
+                let operand = u16::from_le_bytes([bytes[pointer], bytes[pointer + 1]]);
+                pointer += 2;
+                line.push_str(&format!("{:?} ${:04X},X", opcode, operand));
+            }
+            AddressingMode::ABY => {
+                let operand = u16::from_le_bytes([bytes[pointer], bytes[pointer + 1]]);
+                pointer += 2;
+                line.push_str(&format!("{:?} ${:04X},Y", opcode, operand));
+            }
+            AddressingMode::IND => {
+                let operand = u16::from_le_bytes([bytes[pointer], bytes[pointer + 1]]);
+                pointer += 2;
+                line.push_str(&format!("{:?} (${:04X})", opcode, operand));
+            }
+            AddressingMode::IDX => {
+                let operand = bytes[pointer];
+                pointer += 1;
+                line.push_str(&format!("{:?} (${:02X},X)", opcode, operand));
+            }
+            AddressingMode::IDY => {
+                let operand = bytes[pointer];
+                pointer += 1;
+                line.push_str(&format!("{:?} (${:02X}),Y", opcode, operand));
+            }
+        }
+
+        result.push((result_pointer, line));
+
+        if opcode == Mnemonics::BRK {
+            break;
+        }
+    }
+
+    Ok(result)
 }
 
 #[cfg(test)]
