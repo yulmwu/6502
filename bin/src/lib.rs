@@ -1,7 +1,6 @@
-use std::sync::atomic::AtomicBool;
-
 use eframe::egui;
 use emulator::DebugKind;
+use std::sync::atomic::AtomicBool;
 
 pub mod app;
 pub mod ui;

@@ -69,7 +69,7 @@ pub struct App {
     pub settings: Settings,
     pub window_visibility: WindowVisibility,
     pub disassembled: Vec<(usize, String)>,
-    pub is_open_diassembler_window: bool,
+    pub is_open_disassembler_window: bool,
 }
 
 impl App {
@@ -101,12 +101,13 @@ impl eframe::App for App {
             ctx.request_repaint();
         }
 
-        if self.is_open_diassembler_window {
-            Window::new("Diassembler")
+        if self.is_open_disassembler_window {
+            Window::new("Disassembler")
                 .default_width(150.)
                 .default_height(200.)
+                .default_pos((700., 100.))
                 .resizable(true)
-                .show(ctx, |ui| DiassemblerUi.ui(ui, self));
+                .show(ctx, |ui| DisassemblerUi.ui(ui, self));
         }
 
         TopBottomPanel::top("menu_bar").show(ctx, |ui| MenuBar.ui(ui, self));

@@ -1,10 +1,25 @@
 use crate::{app::App, View};
+use assembler::disassemble;
 use eframe::egui::*;
+use emulator::memory::MemoryBus;
 
-pub struct DiassemblerUi;
+pub struct DisassemblerUi;
 
-impl View for DiassemblerUi {
+impl View for DisassemblerUi {
     fn ui(&mut self, ui: &mut Ui, app: &mut App) {
+        if ui.button("disassemble").clicked() {
+            let sliced = app.emulator.memory.slice(0x8000..0xFFFF);
+            app.disassembled = match disassemble(sliced) {
+                Ok(disassembled) => disassembled,
+                Err(e) => {
+                    app.error = Some(e.to_string());
+                    return;
+                }
+            };
+        }
+
+        ui.separator();
+
         ScrollArea::both()
             .auto_shrink([false, true])
             .show(ui, |ui| {
