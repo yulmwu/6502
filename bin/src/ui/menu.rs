@@ -1,7 +1,7 @@
 use crate::{app::App, View, IS_RUNNING};
-use assembler::Assembler;
+use assembler::{diassemble, Assembler};
 use eframe::egui::{menu::menu_button, *};
-use emulator::{DebugKind, Debugger};
+use emulator::{memory::MemoryBus, DebugKind, Debugger};
 use std::{fs, sync::atomic::Ordering};
 
 pub struct MenuBar;
@@ -116,6 +116,18 @@ impl View for MenuBar {
             if ui.button("Reset").clicked() {
                 app.emulator.reset();
                 app.error = None;
+            }
+
+            if ui.button("Diassemble").clicked() {
+                let sliced = app.emulator.memory.slice(0x8000..0xFFFF);
+                app.disassembled = match diassemble(sliced) {
+                    Ok(disassembled) => disassembled,
+                    Err(e) => {
+                        app.error = Some(e.to_string());
+                        return;
+                    }
+                };
+                app.is_open_diassembler_window = true;
             }
 
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
