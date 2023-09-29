@@ -61,7 +61,7 @@ impl View for MenuBar {
                                 app.source_input = match disassemble(&binary) {
                                     Ok(disassembled) => disassembled
                                         .iter()
-                                        .map(|(_, i)| i.clone())
+                                        .map(|(_, _, i)| i.clone())
                                         .collect::<Vec<_>>()
                                         .join("\n"),
                                     Err(e) => {

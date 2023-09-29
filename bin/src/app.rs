@@ -68,7 +68,7 @@ pub struct App {
     pub key_input: String,
     pub settings: Settings,
     pub window_visibility: WindowVisibility,
-    pub disassembled: Vec<(usize, String)>,
+    pub disassembled: Vec<(usize, String, String)>,
     pub is_open_disassembler_window: bool,
 }
 
@@ -103,7 +103,7 @@ impl eframe::App for App {
 
         if self.is_open_disassembler_window {
             Window::new("Disassembler")
-                .default_width(150.)
+                .default_width(250.)
                 .default_height(200.)
                 .default_pos((700., 100.))
                 .resizable(true)
