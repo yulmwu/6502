@@ -19,6 +19,15 @@ impl View for SettingsUi {
                 ui.checkbox(&mut visibility.source, "Show Source Input");
                 ui.checkbox(&mut visibility.memory_dump, "Show Memory Dump");
                 ui.checkbox(&mut visibility.debugger, "Show Debugger");
+                ui.separator();
+                ui.horizontal(|ui| {
+                    ui.add(Label::new("Step Delay (ms)"));
+                    ui.add(
+                        TextEdit::singleline(&mut app.settings.step_delay_input)
+                            .font(FontId::new(10., FontFamily::Monospace))
+                            .text_color(Color32::WHITE),
+                    );
+                });
             });
     }
 }

@@ -96,14 +96,14 @@ impl View for MenuBar {
 
             menu_button(ui, "Window", |ui| {
                 if ui
-                    .button(if app.is_open_disassembler_window {
+                    .button(if app.window_visibility.disassembler {
                         "Close Disassembler"
                     } else {
                         "Open Disassembler"
                     })
                     .clicked()
                 {
-                    app.is_open_disassembler_window = !app.is_open_disassembler_window;
+                    app.window_visibility.disassembler = !app.window_visibility.disassembler;
                 }
             });
 
@@ -112,6 +112,14 @@ impl View for MenuBar {
             if ui.button("Run").clicked() {
                 IS_RUNNING.store(true, Ordering::Relaxed);
                 app.error = None;
+
+                app.settings.step_delay = match app.settings.step_delay_input.parse() {
+                    Ok(step_delay) => step_delay,
+                    Err(_) => {
+                        app.settings.step_delay_input = "0".to_string();
+                        0
+                    }
+                };
             }
 
             if ui.button("Halt").clicked() {

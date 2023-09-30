@@ -3,7 +3,7 @@ use assembler::Assembler;
 use chrono::prelude::*;
 use eframe::egui::*;
 use emulator::{memory::Memory, Cpu6502, CpuDebugger, DebugKind, Debugger};
-use std::sync::atomic::Ordering;
+use std::{sync::atomic::Ordering, thread, time::Duration};
 
 #[derive(Default)]
 pub struct AppDebugger;
@@ -29,6 +29,8 @@ impl Debugger for AppDebugger {
 pub struct Settings {
     pub panel_ui: bool,
     pub reactive_mode: bool,
+    pub step_delay_input: String,
+    pub step_delay: u64,
 }
 
 impl Default for Settings {
@@ -36,6 +38,8 @@ impl Default for Settings {
         Self {
             panel_ui: true,
             reactive_mode: true,
+            step_delay_input: "0".to_string(),
+            step_delay: 0,
         }
     }
 }
@@ -45,6 +49,7 @@ pub struct WindowVisibility {
     pub source: bool,
     pub memory_dump: bool,
     pub debugger: bool,
+    pub disassembler: bool,
 }
 
 impl Default for WindowVisibility {
@@ -54,6 +59,7 @@ impl Default for WindowVisibility {
             source: true,
             memory_dump: true,
             debugger: true,
+            disassembler: false,
         }
     }
 }
@@ -69,7 +75,6 @@ pub struct App {
     pub settings: Settings,
     pub window_visibility: WindowVisibility,
     pub disassembled: Vec<(usize, String, String)>,
-    pub is_open_disassembler_window: bool,
 }
 
 impl App {
@@ -101,7 +106,7 @@ impl eframe::App for App {
             ctx.request_repaint();
         }
 
-        if self.is_open_disassembler_window {
+        if self.window_visibility.disassembler {
             Window::new("Disassembler")
                 .default_width(250.)
                 .default_height(200.)
@@ -204,6 +209,9 @@ impl eframe::App for App {
 
         if IS_RUNNING.load(Ordering::Relaxed) {
             let op = self.emulator.step();
+
+            thread::sleep(Duration::from_millis(self.settings.step_delay));
+
             if op == 0x00 {
                 IS_RUNNING.store(false, Ordering::Relaxed);
                 self.emulator.debug("Program finished");
