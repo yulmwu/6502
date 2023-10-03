@@ -14,13 +14,14 @@ it has five 8-bit registers (A, X, Y, P, S) and a 16-bit program counter (PC), a
 ## Features
 
 -   [x] Addressing modes
--   [x] Implement instructions (without `bit` instruction)
+-   [x] Implement instructions
 -   [x] Assembler (in progress)
 -   [x] Debugger (in progress)
 
 ## TODO
 
 -   [ ] Implement interrupts
+-   [ ] Fix bugs
 
 # References
 
