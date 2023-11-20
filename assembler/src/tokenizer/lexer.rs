@@ -126,21 +126,19 @@ impl<'a> Lexer<'a> {
                     }
 
                     let number = &self.input[_position..self.position];
-                    if number.len() == 2 {
-                        Ok(Token::new(
+                    match number.len() {
+                        1 | 2 => Ok(Token::new(
                             Hexadecimal8Bit(u8::from_str_radix(number, 16).unwrap()),
                             position,
-                        ))
-                    } else if number.len() == 4 {
-                        Ok(Token::new(
+                        )),
+                        3 | 4 => Ok(Token::new(
                             Hexadecimal16Bit(u16::from_str_radix(number, 16).unwrap()),
                             position,
-                        ))
-                    } else {
-                        Err(AssemblerError::new(
+                        )),
+                        _ => Err(AssemblerError::new(
                             AssemblerErrorKind::IllegalCharacter(self.current_char),
                             self.current_position,
-                        ))
+                        )),
                     }
                 }
                 '0' if self.peek_char() == 'x' => {
@@ -153,21 +151,19 @@ impl<'a> Lexer<'a> {
                     }
 
                     let number = &self.input[_position..self.position];
-                    if number.len() == 2 {
-                        Ok(Token::new(
+                    match number.len() {
+                        2 => Ok(Token::new(
                             Hexadecimal8Bit(u8::from_str_radix(number, 16).unwrap()),
                             position,
-                        ))
-                    } else if number.len() == 4 {
-                        Ok(Token::new(
+                        )),
+                        4 => Ok(Token::new(
                             Hexadecimal16Bit(u16::from_str_radix(number, 16).unwrap()),
                             position,
-                        ))
-                    } else {
-                        Err(AssemblerError::new(
+                        )),
+                        _ => Err(AssemblerError::new(
                             AssemblerErrorKind::IllegalCharacter(self.current_char),
                             self.current_position,
-                        ))
+                        )),
                     }
                 }
                 c if c.is_alphabetic() => {
